@@ -81,24 +81,7 @@ class ToolCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         
                         // Category
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppConstants.paddingSmall,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppConstants.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                          ),
-                          child: Text(
-                            tool.category,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: AppConstants.primaryColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+
                         
                         const SizedBox(height: AppConstants.paddingSmall),
                         

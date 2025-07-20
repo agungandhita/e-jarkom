@@ -13,6 +13,96 @@ class UserProfileCard extends StatelessWidget {
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
         final user = provider.currentUser;
+        
+        // Show placeholder if user is null
+        if (user == null) {
+          return GestureDetector(
+            onTap: onTap,
+            child: Container(
+              padding: const EdgeInsets.all(AppConstants.paddingLarge),
+              decoration: BoxDecoration(
+                gradient: AppConstants.primaryGradient,
+                borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  // Profile picture placeholder
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusMedium,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusMedium,
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        size: 30,
+                        color: AppConstants.primaryColor,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: AppConstants.paddingMedium),
+
+                  // User info placeholder
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Guest User',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Tap to login',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Arrow icon
+                  if (onTap != null)
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white70,
+                      size: 16,
+                    ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        // Show user data if available
         return GestureDetector(
           onTap: onTap,
           child: Container(
@@ -79,7 +169,7 @@ class UserProfileCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        user.name,
+                        user.name.isNotEmpty ? user.name : 'Unknown User',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -88,7 +178,7 @@ class UserProfileCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        user.className,
+                        user.className.isNotEmpty ? user.className : 'No Class',
                         style: const TextStyle(
                           fontSize: 14,
                           color: Colors.white70,
@@ -108,7 +198,7 @@ class UserProfileCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           LinearProgressIndicator(
-                            value: user.progressPercentage / 100,
+                            value: user.totalQuizzes > 0 ? user.progressPercentage / 100 : 0,
                             backgroundColor: Colors.white.withOpacity(0.3),
                             valueColor: const AlwaysStoppedAnimation<Color>(
                               AppConstants.secondaryColor,

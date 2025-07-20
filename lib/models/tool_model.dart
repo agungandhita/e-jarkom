@@ -5,7 +5,7 @@ class ToolModel {
   final String function;
   final String imageUrl;
   final String videoUrl;
-  final String category;
+  final String pdfUrl;
 
   ToolModel({
     required this.id,
@@ -14,30 +14,30 @@ class ToolModel {
     required this.function,
     required this.imageUrl,
     required this.videoUrl,
-    required this.category,
+    required this.pdfUrl,
   });
 
   factory ToolModel.fromMap(Map<String, dynamic> map) {
     return ToolModel(
-      id: map['id'] ?? '',
-      name: map['name'] ?? '',
-      description: map['description'] ?? '',
-      function: map['function'] ?? '',
-      imageUrl: map['imageUrl'] ?? '',
-      videoUrl: map['videoUrl'] ?? '',
-      category: map['category'] ?? '',
+      id: map['id']?.toString() ?? '',
+      name: map['nama'] ?? map['name'] ?? '',
+      description: map['deskripsi'] ?? map['description'] ?? '',
+      function: map['fungsi'] ?? map['function'] ?? '',
+      imageUrl: map['gambar'] ?? map['imageUrl'] ?? '',
+      videoUrl: map['url_video'] ?? map['videoUrl'] ?? '',
+      pdfUrl: map['file_pdf'] ?? map['pdfUrl'] ?? '',
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'name': name,
-      'description': description,
-      'function': function,
-      'imageUrl': imageUrl,
-      'videoUrl': videoUrl,
-      'category': category,
+      'nama': name,
+      'deskripsi': description,
+      'fungsi': function,
+      'gambar': imageUrl,
+      'url_video': videoUrl,
+      'file_pdf': pdfUrl,
     };
   }
 }

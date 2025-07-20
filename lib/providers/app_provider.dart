@@ -1,15 +1,17 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/tool_model.dart';
 import '../models/user_model.dart';
 import '../models/quiz_model.dart';
 import '../models/video_model.dart';
-import '../data/dummy_data.dart';
 import '../services/data_service.dart';
+import '../services/api_service.dart';
 
 class AppProvider with ChangeNotifier {
   // User data
-  UserModel _currentUser = DummyData.dummyUser;
-  UserModel get currentUser => _currentUser;
+  UserModel? _currentUser;
+  UserModel? get currentUser => _currentUser;
 
   // Tools data
   List<ToolModel> _tools = [];
@@ -24,6 +26,12 @@ class AppProvider with ChangeNotifier {
   // Quiz data
   List<QuizQuestion> _quizQuestions = [];
   List<QuizQuestion> get quizQuestions => _quizQuestions;
+  
+  // Constructor
+  AppProvider() {
+    // Initialize data from API
+    initializeData();
+  }
   
   // Loading states
   bool _isLoading = false;
@@ -58,11 +66,8 @@ class AppProvider with ChangeNotifier {
         _filteredTools = await DataService.searchTools(query);
       }
     } catch (e) {
-      _filteredTools = _tools.where((tool) {
-        return tool.name.toLowerCase().contains(query.toLowerCase()) ||
-               tool.description.toLowerCase().contains(query.toLowerCase()) ||
-               tool.category.toLowerCase().contains(query.toLowerCase());
-      }).toList();
+      // If API fails, show empty results
+      _filteredTools = [];
     }
     
     _isLoading = false;
@@ -75,13 +80,13 @@ class AppProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Add new tool
-  Future<bool> addTool(ToolModel tool) async {
+  // Add new tool with image upload
+  Future<bool> addTool(ToolModel tool, {File? imageFile}) async {
     _isLoading = true;
     notifyListeners();
     
     try {
-      final createdTool = await DataService.createTool(tool);
+      final createdTool = await DataService.createTool(tool, imageFile: imageFile);
       if (createdTool != null) {
         _tools.add(createdTool);
         _filteredTools = _tools;
@@ -90,9 +95,9 @@ class AppProvider with ChangeNotifier {
         return true;
       }
     } catch (e) {
-      // Fallback: add to local list
-      _tools.add(tool);
-      _filteredTools = _tools;
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
     
     _isLoading = false;
@@ -108,37 +113,22 @@ class AppProvider with ChangeNotifier {
 
   // Update user progress
   Future<void> updateUserProgress() async {
+    if (_currentUser == null) return;
+    
     try {
       final updatedUser = await DataService.updateUserProgress(
-        _currentUser.id,
-        completedQuizzes: _currentUser.completedQuizzes + 1,
+        _currentUser!.id,
+        completedQuizzes: _currentUser!.completedQuizzes + 1,
       );
       
-      if (updatedUser != null) {
-        _currentUser = updatedUser;
-      } else {
-        // Fallback: update locally
-        _currentUser = UserModel(
-          id: _currentUser.id,
-          name: _currentUser.name,
-          className: _currentUser.className,
-          profileImageUrl: _currentUser.profileImageUrl,
-          completedQuizzes: _currentUser.completedQuizzes + 1,
-          totalQuizzes: _currentUser.totalQuizzes,
-        );
-      }
+      _currentUser = updatedUser;
+      notifyListeners();
     } catch (e) {
-      // Fallback: update locally
-      _currentUser = UserModel(
-        id: _currentUser.id,
-        name: _currentUser.name,
-        className: _currentUser.className,
-        profileImageUrl: _currentUser.profileImageUrl,
-        completedQuizzes: _currentUser.completedQuizzes + 1,
-        totalQuizzes: _currentUser.totalQuizzes,
-      );
+      // If API fails, don't update anything
+      if (kDebugMode) {
+        print('Failed to update user progress: $e');
+      }
     }
-    notifyListeners();
   }
 
   // Get tool by ID
@@ -182,11 +172,11 @@ class AppProvider with ChangeNotifier {
     try {
       return await DataService.getQuizQuestions(quizLevel);
     } catch (e) {
-      return _quizQuestions.where((q) => q.level == quizLevel).toList();
+      return [];
     }
   }
   
-  // Initialize data from API or fallback to dummy
+  // Initialize data from API
   Future<void> initializeData() async {
     _isLoading = true;
     _connectionStatus = 'Initializing...';
@@ -199,22 +189,22 @@ class AppProvider with ChangeNotifier {
       _isConnected = DataService.isConnected;
       _connectionStatus = _isConnected 
           ? 'Connected to server' 
-          : 'Using offline data';
+          : 'Connection failed';
       
-      // Load initial data
-      await loadTools();
-      await loadVideos();
-      await loadUser();
+      if (_isConnected) {
+        // Load initial data only if connected
+        await loadTools();
+        await loadVideos();
+        await loadUser();
+      }
       
     } catch (e) {
       _isConnected = false;
-      _connectionStatus = 'Connection failed - using offline data';
+      _connectionStatus = 'Connection failed';
       
-      // Fallback to dummy data
-      _tools = DummyData.dummyTools;
-      _filteredTools = DummyData.dummyTools;
-      _videos = DummyData.dummyVideos;
-      _currentUser = DummyData.dummyUser;
+      if (kDebugMode) {
+        print('Failed to initialize data: $e');
+      }
     }
     
     _isLoading = false;
@@ -227,8 +217,11 @@ class AppProvider with ChangeNotifier {
       _tools = await DataService.getTools();
       _filteredTools = _tools;
     } catch (e) {
-      _tools = DummyData.dummyTools;
-      _filteredTools = DummyData.dummyTools;
+      _tools = [];
+      _filteredTools = [];
+      if (kDebugMode) {
+        print('Failed to load tools: $e');
+      }
     }
   }
   
@@ -237,16 +230,28 @@ class AppProvider with ChangeNotifier {
     try {
       _videos = await DataService.getVideos();
     } catch (e) {
-      _videos = DummyData.dummyVideos;
+      _videos = [];
+      if (kDebugMode) {
+        print('Failed to load videos: $e');
+      }
     }
   }
   
   // Load user from data service
   Future<void> loadUser() async {
     try {
-      _currentUser = await DataService.getUserById('1');
+      // First try to load from local storage
+      final savedUserData = await ApiService.getSavedUserData();
+      if (savedUserData != null) {
+        _currentUser = UserModel.fromMap(savedUserData);
+      } else {
+        _currentUser = null;
+      }
     } catch (e) {
-      _currentUser = DummyData.dummyUser;
+      _currentUser = null;
+      if (kDebugMode) {
+        print('Failed to load user: $e');
+      }
     }
   }
   
@@ -261,21 +266,20 @@ class AppProvider with ChangeNotifier {
     required List<Map<String, dynamic>> answers,
     required QuizLevel level,
   }) async {
+    if (_currentUser == null) return null;
+    
     try {
       return await DataService.submitQuizAnswers(
-        userId: _currentUser.id,
+        userId: _currentUser!.id,
         answers: answers,
         level: level,
       );
     } catch (e) {
+      if (kDebugMode) {
+        print('Failed to submit quiz answers: $e');
+      }
       return null;
     }
-  }
-  
-  // Toggle data source (for testing)
-  void toggleDataSource() {
-    DataService.toggleDataSource();
-    initializeData();
   }
   
   // Get connection status info

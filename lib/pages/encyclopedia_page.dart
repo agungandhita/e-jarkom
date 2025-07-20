@@ -16,7 +16,6 @@ class EncyclopediaPage extends StatefulWidget {
 
 class _EncyclopediaPageState extends State<EncyclopediaPage> {
   final TextEditingController _searchController = TextEditingController();
-  String _selectedCategory = 'Semua';
 
   @override
   void dispose() {
@@ -81,52 +80,6 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
                     setState(() {});
                   },
                 ),
-
-                const SizedBox(height: AppConstants.paddingMedium),
-
-                // Category filter
-                SizedBox(
-                  height: 40,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: ['Semua', ...AppConstants.toolCategories].length,
-                    itemBuilder: (context, index) {
-                      final categories = [
-                        'Semua',
-                        ...AppConstants.toolCategories,
-                      ];
-                      final category = categories[index];
-                      final isSelected = _selectedCategory == category;
-
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                          right: AppConstants.paddingSmall,
-                        ),
-                        child: FilterChip(
-                          label: Text(category),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              _selectedCategory = category;
-                            });
-                          },
-                          backgroundColor: Colors.grey[200],
-                          selectedColor: AppConstants.primaryColor.withOpacity(
-                            0.2,
-                          ),
-                          labelStyle: TextStyle(
-                            color: isSelected
-                                ? AppConstants.primaryColor
-                                : Colors.black54,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
               ],
             ),
           ),
@@ -136,13 +89,6 @@ class _EncyclopediaPageState extends State<EncyclopediaPage> {
             child: Consumer<AppProvider>(
               builder: (context, provider, child) {
                 var tools = provider.filteredTools;
-
-                // Filter by category
-                if (_selectedCategory != 'Semua') {
-                  tools = tools
-                      .where((tool) => tool.category == _selectedCategory)
-                      .toList();
-                }
 
                 if (tools.isEmpty) {
                   return Center(

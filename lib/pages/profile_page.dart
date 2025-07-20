@@ -16,6 +16,38 @@ class ProfilePage extends StatelessWidget {
       body: Consumer<AppProvider>(
         builder: (context, provider, child) {
           final user = provider.currentUser;
+          
+          if (user == null) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.person_off,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Data pengguna tidak tersedia',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Pastikan koneksi internet aktif',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          
           return SingleChildScrollView(
             padding: const EdgeInsets.all(AppConstants.paddingMedium),
             child: Column(
@@ -58,7 +90,7 @@ class ProfilePage extends StatelessWidget {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(50),
-                              child: user.profileImageUrl.isNotEmpty
+                              child: user!.profileImageUrl.isNotEmpty
                                   ? Image.network(
                                       user.profileImageUrl,
                                       fit: BoxFit.cover,
@@ -106,7 +138,7 @@ class ProfilePage extends StatelessWidget {
 
                       // User name
                       Text(
-                        user.name,
+                        user!.name,
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -129,7 +161,7 @@ class ProfilePage extends StatelessWidget {
                           ),
                         ),
                         child: Text(
-                          user.className,
+                          user!.className,
                           style: const TextStyle(
                             fontSize: 16,
                             color: AppConstants.primaryColor,
@@ -186,7 +218,7 @@ class ProfilePage extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '${user.completedQuizzes}/${user.totalQuizzes}',
+                            '${user!.completedQuizzes}/${user!.totalQuizzes}',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -200,7 +232,7 @@ class ProfilePage extends StatelessWidget {
 
                       // Progress bar
                       LinearProgressIndicator(
-                        value: user.progressPercentage / 100,
+                        value: user!.progressPercentage / 100,
                         backgroundColor: Colors.grey[200],
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           AppConstants.primaryColor,
@@ -210,7 +242,7 @@ class ProfilePage extends StatelessWidget {
                       const SizedBox(height: AppConstants.paddingSmall),
 
                       Text(
-                        '${AppHelpers.formatPercentage(user.progressPercentage)} selesai',
+                        '${AppHelpers.formatPercentage(user!.progressPercentage)} selesai',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],

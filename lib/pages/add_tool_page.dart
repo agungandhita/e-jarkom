@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -20,8 +21,8 @@ class _AddToolPageState extends State<AddToolPage> {
   final _descriptionController = TextEditingController();
   final _functionController = TextEditingController();
   final _videoUrlController = TextEditingController();
+  final _pdfUrlController = TextEditingController();
 
-  String _selectedCategory = AppConstants.toolCategories.first;
   XFile? _selectedImage;
   bool _isLoading = false;
 
@@ -31,6 +32,7 @@ class _AddToolPageState extends State<AddToolPage> {
     _descriptionController.dispose();
     _functionController.dispose();
     _videoUrlController.dispose();
+    _pdfUrlController.dispose();
     super.dispose();
   }
 
@@ -100,8 +102,8 @@ class _AddToolPageState extends State<AddToolPage> {
                                 borderRadius: BorderRadius.circular(
                                   AppConstants.radiusMedium,
                                 ),
-                                child: Image.network(
-                                  _selectedImage!.path,
+                                child: Image.file(
+                                  File(_selectedImage!.path),
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
                                     return _buildImagePlaceholder();
@@ -149,42 +151,6 @@ class _AddToolPageState extends State<AddToolPage> {
 
                     const SizedBox(height: AppConstants.paddingLarge),
 
-                    // Category dropdown
-                    const Text(
-                      'Kategori',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: AppConstants.paddingSmall),
-                    DropdownButtonFormField<String>(
-                      value: _selectedCategory,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppConstants.radiusMedium,
-                          ),
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                      ),
-                      items: AppConstants.toolCategories.map((category) {
-                        return DropdownMenuItem(
-                          value: category,
-                          child: Text(category),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedCategory = value!;
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: AppConstants.paddingLarge),
-
                     // Description
                     _buildTextField(
                       controller: _descriptionController,
@@ -227,6 +193,22 @@ class _AddToolPageState extends State<AddToolPage> {
                           final videoId = AppHelpers.getYouTubeVideoId(value);
                           if (videoId == null) {
                             return 'URL YouTube tidak valid';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: AppConstants.paddingLarge),
+                    // PDF URL
+                    _buildTextField(
+                      controller: _pdfUrlController,
+                      label: 'URL File PDF (Opsional)',
+                      hint: 'Masukkan URL file PDF',
+                      validator: (value) {
+                        if (value != null && value.isNotEmpty) {
+                          if (!value.toLowerCase().endsWith('.pdf') &&
+                              !value.contains('pdf')) {
+                            return 'URL harus mengarah ke file PDF';
                           }
                         }
                         return null;
@@ -342,31 +324,63 @@ class _AddToolPageState extends State<AddToolPage> {
     });
 
     try {
-      // Get YouTube video ID if URL is provided
-      String videoId = '';
-      if (_videoUrlController.text.isNotEmpty) {
-        videoId = AppHelpers.getYouTubeVideoId(_videoUrlController.text) ?? '';
+      // Validate required fields
+      if (_nameController.text.trim().isEmpty) {
+        throw Exception('Nama alat tidak boleh kosong');
+      }
+      if (_descriptionController.text.trim().isEmpty) {
+        throw Exception('Deskripsi tidak boleh kosong');
+      }
+      if (_functionController.text.trim().isEmpty) {
+        throw Exception('Fungsi tidak boleh kosong');
       }
 
-      // Create new tool
+      // Process video URL - store full URL, not just video ID
+      String processedVideoUrl = '';
+      if (_videoUrlController.text.isNotEmpty) {
+        final videoId = AppHelpers.getYouTubeVideoId(_videoUrlController.text);
+        if (videoId != null) {
+          // Store the original URL or create a standard YouTube URL
+          processedVideoUrl = _videoUrlController.text.trim();
+        } else {
+          throw Exception('URL YouTube tidak valid');
+        }
+      }
+
+      // Prepare image file for upload
+      File? imageFile;
+      if (_selectedImage != null) {
+        imageFile = File(_selectedImage!.path);
+      }
+
+      // Create new tool with proper field mapping for database
       final newTool = ToolModel(
         id: AppHelpers.generateId(),
-        name: _nameController.text.trim(),
-        description: _descriptionController.text.trim(),
-        function: _functionController.text.trim(),
-        imageUrl: _selectedImage?.path ?? '',
-        videoUrl: videoId,
-        category: _selectedCategory,
+        name: _nameController.text.trim(), // Maps to 'nama' in database
+        description: _descriptionController.text
+            .trim(), // Maps to 'deskripsi' in database
+        function: _functionController.text
+            .trim(), // Maps to 'fungsi' in database
+        imageUrl: '', // Will be set by server after upload
+        videoUrl: processedVideoUrl, // Maps to 'url_video' in database
+        pdfUrl: _pdfUrlController.text.trim(), // Maps to 'file_pdf' in database
       );
 
-      // Add tool to provider
-      context.read<AppProvider>().addTool(newTool);
+      // Add tool via provider (which uses API) with image file
+      final success = await context.read<AppProvider>().addTool(
+        newTool,
+        imageFile: imageFile,
+      );
 
-      // Show success message
-      AppHelpers.showSnackBar(context, 'Alat berhasil ditambahkan!');
+      if (success) {
+        // Show success message
+        AppHelpers.showSnackBar(context, 'Alat berhasil ditambahkan!');
 
-      // Navigate back
-      Navigator.of(context).pop();
+        // Navigate back
+        Navigator.of(context).pop();
+      } else {
+        throw Exception('Gagal menyimpan data ke server');
+      }
     } catch (e) {
       AppHelpers.showSnackBar(
         context,

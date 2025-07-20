@@ -25,10 +25,14 @@ class _ToolDetailPageState extends State<ToolDetailPage> {
 
   void _initializeVideoPlayer(String videoUrl) {
     if (videoUrl.isNotEmpty) {
-      _youtubeController = YoutubePlayerController(
-        initialVideoId: videoUrl,
-        flags: const YoutubePlayerFlags(autoPlay: false, mute: false),
-      );
+      // Extract video ID from YouTube URL
+      final videoId = AppHelpers.getYouTubeVideoId(videoUrl);
+      if (videoId != null) {
+        _youtubeController = YoutubePlayerController(
+          initialVideoId: videoId,
+          flags: const YoutubePlayerFlags(autoPlay: false, mute: false),
+        );
+      }
     }
   }
 
@@ -108,40 +112,14 @@ class _ToolDetailPageState extends State<ToolDetailPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Tool name and category
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  tool.name,
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppConstants.paddingMedium,
-                                  vertical: AppConstants.paddingSmall,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppConstants.primaryColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(
-                                    AppConstants.radiusSmall,
-                                  ),
-                                ),
-                                child: Text(
-                                  tool.category,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppConstants.primaryColor,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          // Tool name
+                          Text(
+                            tool.name,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
                           ),
 
                           const SizedBox(height: AppConstants.paddingLarge),
@@ -163,6 +141,12 @@ class _ToolDetailPageState extends State<ToolDetailPage> {
                           // Video section
                           if (_youtubeController != null) ...[
                             _buildVideoSection(),
+                            const SizedBox(height: AppConstants.paddingLarge),
+                          ],
+
+                          // PDF section
+                          if (tool.pdfUrl.isNotEmpty) ...[
+                            _buildPdfSection(tool.pdfUrl),
                             const SizedBox(height: AppConstants.paddingLarge),
                           ],
 
@@ -340,6 +324,109 @@ class _ToolDetailPageState extends State<ToolDetailPage> {
               onReady: () {
                 setState(() {});
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPdfSection(String pdfUrl) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppConstants.paddingLarge),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.picture_as_pdf,
+                color: AppConstants.primaryColor,
+                size: 20,
+              ),
+              SizedBox(width: AppConstants.paddingSmall),
+              Text(
+                'Dokumen PDF',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppConstants.paddingMedium),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppConstants.paddingMedium),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.insert_drive_file,
+                  color: Colors.red,
+                  size: 40,
+                ),
+                const SizedBox(width: AppConstants.paddingMedium),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Manual/Panduan PDF',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tap untuk membuka dokumen',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    AppHelpers.showSnackBar(
+                      context,
+                      'Membuka PDF: $pdfUrl',
+                    );
+                    // TODO: Implement PDF viewer or launch URL
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.radiusMedium,
+                      ),
+                    ),
+                  ),
+                  child: const Text('Buka'),
+                ),
+              ],
             ),
           ),
         ],

@@ -18,15 +18,50 @@ class QuizQuestion {
   });
 
   factory QuizQuestion.fromMap(Map<String, dynamic> map) {
+    // Handle options from database format
+    List<String> options = [];
+    if (map['options'] != null) {
+      options = List<String>.from(map['options']);
+    } else {
+      // Build options from individual fields
+      options = [
+        map['pilihan_a'] ?? '',
+        map['pilihan_b'] ?? '',
+        map['pilihan_c'] ?? '',
+        map['pilihan_d'] ?? '',
+      ];
+    }
+    
+    // Handle correct answer index
+    int correctIndex = 0;
+    if (map['correctAnswerIndex'] != null) {
+      correctIndex = map['correctAnswerIndex'];
+    } else if (map['jawaban_benar'] != null) {
+      String correctAnswer = map['jawaban_benar'].toString().toLowerCase();
+      switch (correctAnswer) {
+        case 'a': correctIndex = 0; break;
+        case 'b': correctIndex = 1; break;
+        case 'c': correctIndex = 2; break;
+        case 'd': correctIndex = 3; break;
+        default: correctIndex = 0;
+      }
+    }
+    
+    // Handle level mapping
+    QuizLevel quizLevel = QuizLevel.easy;
+    String levelStr = map['level'] ?? '';
+    switch (levelStr.toLowerCase()) {
+      case 'mudah': case 'easy': quizLevel = QuizLevel.easy; break;
+      case 'sedang': case 'medium': quizLevel = QuizLevel.medium; break;
+      case 'sulit': case 'hard': quizLevel = QuizLevel.hard; break;
+    }
+    
     return QuizQuestion(
-      id: map['id'] ?? '',
-      question: map['question'] ?? '',
-      options: List<String>.from(map['options'] ?? []),
-      correctAnswerIndex: map['correctAnswerIndex'] ?? 0,
-      level: QuizLevel.values.firstWhere(
-        (e) => e.toString() == 'QuizLevel.${map['level']}',
-        orElse: () => QuizLevel.easy,
-      ),
+      id: map['id']?.toString() ?? '',
+      question: map['question'] ?? map['soal'] ?? '',
+      options: options,
+      correctAnswerIndex: correctIndex,
+      level: quizLevel,
       explanation: map['explanation'] ?? '',
     );
   }

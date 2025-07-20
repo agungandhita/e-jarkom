@@ -20,11 +20,21 @@ class VideoModel {
   String get youtubeUrl => 'https://www.youtube.com/watch?v=$youtubeId';
 
   factory VideoModel.fromMap(Map<String, dynamic> map) {
+    String youtubeUrl = map['youtube_url'] ?? map['youtubeUrl'] ?? '';
+    String extractedId = '';
+    
+    // Extract YouTube ID from URL if needed
+    if (youtubeUrl.isNotEmpty) {
+      final regex = RegExp(r'(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)');
+      final match = regex.firstMatch(youtubeUrl);
+      extractedId = match?.group(1) ?? youtubeUrl;
+    }
+    
     return VideoModel(
-      id: map['id'] ?? '',
-      title: map['title'] ?? '',
-      description: map['description'] ?? '',
-      youtubeId: map['youtubeId'] ?? '',
+      id: map['id']?.toString() ?? '',
+      title: map['title'] ?? map['judul'] ?? '',
+      description: map['description'] ?? map['deskripsi'] ?? '',
+      youtubeId: map['youtubeId'] ?? extractedId,
       thumbnailUrl: map['thumbnailUrl'] ?? '',
       duration: map['duration'] ?? '',
       category: map['category'] ?? '',

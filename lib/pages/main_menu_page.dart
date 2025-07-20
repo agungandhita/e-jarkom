@@ -62,7 +62,7 @@ class MainMenuPage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Selamat Datang, ${provider.currentUser.name}!',
+                        'Selamat Datang, ${provider.currentUser?.name ?? 'Pengguna'}!',
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -71,7 +71,7 @@ class MainMenuPage extends StatelessWidget {
                       ),
                       const SizedBox(height: AppConstants.paddingSmall),
                       Text(
-                        'Kelas: ${provider.currentUser.className}',
+                        'Kelas: ${provider.currentUser?.className ?? 'Tidak tersedia'}',
                         style: const TextStyle(
                           fontSize: 16,
                           color: Colors.white70,
@@ -87,7 +87,7 @@ class MainMenuPage extends StatelessWidget {
                           ),
                           const SizedBox(width: AppConstants.paddingSmall),
                           Text(
-                            'Progress: ${provider.currentUser.completedQuizzes}/${provider.currentUser.totalQuizzes} Kuis',
+                            'Progress: ${provider.currentUser?.completedQuizzes ?? 0}/${provider.currentUser?.totalQuizzes ?? 0} Kuis',
                             style: const TextStyle(
                               fontSize: 14,
                               color: Colors.white,

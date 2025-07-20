@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/app_provider.dart';
 import 'pages/splash_screen.dart';
+import 'services/api_service.dart';
 import 'utils/constants.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize ApiService to load saved token
+  await ApiService.initialize();
+  
   runApp(const MyApp());
 }
 

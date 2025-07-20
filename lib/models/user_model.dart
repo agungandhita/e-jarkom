@@ -15,17 +15,22 @@ class UserModel {
     required this.totalQuizzes,
   });
 
-  double get progressPercentage => 
+  double get progressPercentage =>
       totalQuizzes > 0 ? (completedQuizzes / totalQuizzes) * 100 : 0;
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
-      id: map['id'] ?? '',
+      id: map['id']?.toString() ?? '',
       name: map['name'] ?? '',
-      className: map['className'] ?? '',
-      profileImageUrl: map['profileImageUrl'] ?? '',
-      completedQuizzes: map['completedQuizzes'] ?? 0,
-      totalQuizzes: map['totalQuizzes'] ?? 0,
+      className: map['kelas'] ?? map['className'] ?? '', // fallback
+      profileImageUrl:
+          map['foto'] ??
+          map['profileImageUrl'] ??
+          map['profile_image_url'] ??
+          '',
+      completedQuizzes:
+          (map['completed_quizzes'] ?? map['completedQuizzes'] ?? 0).toInt(),
+      totalQuizzes: (map['total_quizzes'] ?? map['totalQuizzes'] ?? 0).toInt(),
     );
   }
 
