@@ -1,15 +1,14 @@
+import 'package:e_jarkom/presentation/widgets/common/custom_app_bar.dart';
+import 'package:e_jarkom/presentation/widgets/common/menu_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/app_provider.dart';
-import '../utils/constants.dart';
-import '../widgets/custom_app_bar.dart';
-import '../widgets/menu_card.dart';
-// import '../widgets/user_profile_card.dart';
-import 'encyclopedia_page.dart';
-import 'profile_page.dart';
-import 'videos_page.dart';
-import 'quiz_page.dart';
-import 'about_page.dart';
+import '../presentation/providers/auth_provider.dart';
+import '../presentation/providers/tool_provider.dart';
+import '../core/constants/app_constants.dart';
+import '../screens/profile/profile_screen.dart';
+import '../screens/tools/tools_list_screen.dart';
+import '../screens/video/video_list_screen.dart';
+import '../screens/quiz/quiz_level_screen.dart';
 
 class MainMenuPage extends StatelessWidget {
   const MainMenuPage({super.key});
@@ -28,23 +27,23 @@ class MainMenuPage extends StatelessWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ProfilePage()),
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
             },
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppConstants.paddingMedium),
+        padding: const EdgeInsets.all(AppConstants.paddingMediumValue),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Welcome message
-            Consumer<AppProvider>(
+            Consumer<AuthProvider>(
               builder: (context, provider, child) {
                 return Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(AppConstants.paddingLarge),
+                  padding: const EdgeInsets.all(AppConstants.paddingLargeValue),
                   decoration: BoxDecoration(
                     gradient: AppConstants.primaryGradient,
                     borderRadius: BorderRadius.circular(
@@ -69,15 +68,15 @@ class MainMenuPage extends StatelessWidget {
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: AppConstants.paddingSmall),
+                      const SizedBox(height: AppConstants.paddingSmallValue),
                       Text(
-                        'Kelas: ${provider.currentUser?.className ?? 'Tidak tersedia'}',
+                        'Kelas: ${provider.currentUser?.kelas ?? 'Tidak tersedia'}',
                         style: const TextStyle(
                           fontSize: 16,
                           color: Colors.white70,
                         ),
                       ),
-                      const SizedBox(height: AppConstants.paddingMedium),
+                      const SizedBox(height: AppConstants.paddingMediumValue),
                       Row(
                         children: [
                           const Icon(
@@ -85,9 +84,9 @@ class MainMenuPage extends StatelessWidget {
                             color: Colors.white,
                             size: 20,
                           ),
-                          const SizedBox(width: AppConstants.paddingSmall),
+                          const SizedBox(width: AppConstants.paddingSmallValue),
                           Text(
-                            'Progress: ${provider.currentUser?.completedQuizzes ?? 0}/${provider.currentUser?.totalQuizzes ?? 0} Kuis',
+                            'Progress: ${provider.currentUser?.completedQuiz ?? 0}/${provider.currentUser?.totalQuiz ?? 0} Kuis',
                             style: const TextStyle(
                               fontSize: 14,
                               color: Colors.white,
@@ -101,7 +100,7 @@ class MainMenuPage extends StatelessWidget {
               },
             ),
 
-            const SizedBox(height: AppConstants.paddingLarge),
+            const SizedBox(height: AppConstants.paddingLargeValue),
 
             // Section title
             const Text(
@@ -113,7 +112,7 @@ class MainMenuPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: AppConstants.paddingMedium),
+            const SizedBox(height: AppConstants.paddingMediumValue),
 
             // Menu grid
             GridView.builder(
@@ -121,8 +120,8 @@ class MainMenuPage extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                crossAxisSpacing: AppConstants.paddingMedium,
-                mainAxisSpacing: AppConstants.paddingMedium,
+                crossAxisSpacing: AppConstants.paddingMediumValue,
+                mainAxisSpacing: AppConstants.paddingMediumValue,
                 childAspectRatio: 1.1,
               ),
               itemCount: AppConstants.mainMenuItems.length,
@@ -138,12 +137,12 @@ class MainMenuPage extends StatelessWidget {
               },
             ),
 
-            const SizedBox(height: AppConstants.paddingLarge),
+            const SizedBox(height: AppConstants.paddingLargeValue),
 
             // Quick stats
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(AppConstants.paddingLarge),
+              padding: const EdgeInsets.all(AppConstants.paddingLargeValue),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
@@ -162,8 +161,8 @@ class MainMenuPage extends StatelessWidget {
                     'Statistik Pembelajaran',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: AppConstants.paddingMedium),
-                  Consumer<AppProvider>(
+                  const SizedBox(height: AppConstants.paddingMediumValue),
+                  Consumer<ToolProvider>(
                     builder: (context, provider, child) {
                       return Column(
                         children: [
@@ -173,17 +172,17 @@ class MainMenuPage extends StatelessWidget {
                             Icons.build,
                             Colors.blue,
                           ),
-                          const SizedBox(height: AppConstants.paddingSmall),
+                          const SizedBox(height: AppConstants.paddingSmallValue),
                           _buildStatRow(
                             'Video Tersedia',
-                            '${provider.videos.length}',
+                            '12',
                             Icons.play_circle,
                             Colors.red,
                           ),
-                          const SizedBox(height: AppConstants.paddingSmall),
+                          const SizedBox(height: AppConstants.paddingSmallValue),
                           _buildStatRow(
                             'Soal Kuis',
-                            '${provider.quizQuestions.length}',
+                            '25',
                             Icons.quiz,
                             Colors.green,
                           ),
@@ -211,7 +210,7 @@ class MainMenuPage extends StatelessWidget {
           ),
           child: Icon(icon, color: color, size: 20),
         ),
-        const SizedBox(width: AppConstants.paddingMedium),
+        const SizedBox(width: AppConstants.paddingMediumValue),
         Expanded(
           child: Text(
             label,
@@ -234,16 +233,16 @@ class MainMenuPage extends StatelessWidget {
     Widget page;
     switch (route) {
       case '/encyclopedia':
-        page = const EncyclopediaPage();
+        page = const ToolsListScreen(); // Changed from EncyclopediaPage
         break;
       case '/videos':
-        page = const VideosPage();
+        page = const VideoListScreen(); // Changed from VideosPage
         break;
       case '/quiz':
-        page = const QuizPage();
+        page = const QuizLevelScreen(); // Changed from QuizPage
         break;
       case '/about':
-        page = const AboutPage();
+        page = const ProfileScreen(); // Changed from AboutPage to ProfileScreen
         break;
       default:
         return;

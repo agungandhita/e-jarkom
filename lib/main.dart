@@ -1,67 +1,68 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'providers/app_provider.dart';
-import 'pages/splash_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'core/themes/app_theme.dart';
+import 'data/repositories/video_repository.dart';
+import 'presentation/providers/auth_provider.dart';
+import 'presentation/providers/tool_provider.dart';
+import 'presentation/providers/quiz_provider.dart';
+import 'presentation/providers/video_provider.dart';
+import 'presentation/providers/category_provider.dart';
+import 'presentation/providers/dashboard_provider.dart';
+import 'screens/auth/splash_screen.dart';
 import 'services/api_service.dart';
-import 'utils/constants.dart';
+import 'services/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize ApiService to load saved token
-  await ApiService.initialize();
-  
-  runApp(const MyApp());
+
+  // Initialize services
+  final prefs = await SharedPreferences.getInstance();
+  final storageService = StorageService(prefs);
+  final apiService = ApiService();
+
+  runApp(MyApp(storageService: storageService, apiService: apiService));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final StorageService storageService;
+  final ApiService apiService;
+
+  const MyApp({
+    super.key,
+    required this.storageService,
+    required this.apiService,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => AppProvider(),
-      child: MaterialApp(
-        title: AppConstants.appName,
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: AppConstants.primaryColor,
-            brightness: Brightness.light,
-          ),
-          useMaterial3: true,
-          fontFamily: 'Roboto',
-          appBarTheme: const AppBarTheme(
-            centerTitle: true,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            foregroundColor: Colors.black87,
-          ),
-          cardTheme: CardThemeData(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                AppConstants.radiusMedium,
-              ),
-            ),
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-              ),
-            ),
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-            ),
-            filled: true,
-            fillColor: Colors.grey[50],
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(apiService, storageService),
+        ),
+        ChangeNotifierProvider(create: (_) => ToolProvider(apiService)),
+        ChangeNotifierProvider(
+          create: (_) => QuizProvider(
+            apiService: apiService,
+            storageService: storageService,
           ),
         ),
+        ChangeNotifierProvider(
+          create: (_) =>
+              VideoProvider(VideoRepository.fromApiService(apiService)),
+        ),
+        ChangeNotifierProvider(create: (_) => CategoryProvider(apiService)),
+        ChangeNotifierProvider(create: (_) => DashboardProvider(apiService)),
+      ],
+      child: MaterialApp(
+        title: 'Ensiklopedia Alat SMK',
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.system,
         home: const SplashScreen(),
+        debugShowCheckedModeBanner: false,
       ),
     );
   }

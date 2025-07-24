@@ -1,95 +1,83 @@
-enum QuizLevel { easy, medium, hard }
-
-class QuizQuestion {
+class Quiz {
   final String id;
-  final String question;
-  final List<String> options;
-  final int correctAnswerIndex;
-  final QuizLevel level;
-  final String explanation;
+  final String soal;
+  final String pilihanA;
+  final String pilihanB;
+  final String pilihanC;
+  final String pilihanD;
+  final String jawabanBenar;
+  final String level;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  QuizQuestion({
+  Quiz({
     required this.id,
-    required this.question,
-    required this.options,
-    required this.correctAnswerIndex,
+    required this.soal,
+    required this.pilihanA,
+    required this.pilihanB,
+    required this.pilihanC,
+    required this.pilihanD,
+    required this.jawabanBenar,
     required this.level,
-    required this.explanation,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  factory QuizQuestion.fromMap(Map<String, dynamic> map) {
-    // Handle options from database format
-    List<String> options = [];
-    if (map['options'] != null) {
-      options = List<String>.from(map['options']);
-    } else {
-      // Build options from individual fields
-      options = [
-        map['pilihan_a'] ?? '',
-        map['pilihan_b'] ?? '',
-        map['pilihan_c'] ?? '',
-        map['pilihan_d'] ?? '',
-      ];
-    }
-    
-    // Handle correct answer index
-    int correctIndex = 0;
-    if (map['correctAnswerIndex'] != null) {
-      correctIndex = map['correctAnswerIndex'];
-    } else if (map['jawaban_benar'] != null) {
-      String correctAnswer = map['jawaban_benar'].toString().toLowerCase();
-      switch (correctAnswer) {
-        case 'a': correctIndex = 0; break;
-        case 'b': correctIndex = 1; break;
-        case 'c': correctIndex = 2; break;
-        case 'd': correctIndex = 3; break;
-        default: correctIndex = 0;
-      }
-    }
-    
-    // Handle level mapping
-    QuizLevel quizLevel = QuizLevel.easy;
-    String levelStr = map['level'] ?? '';
-    switch (levelStr.toLowerCase()) {
-      case 'mudah': case 'easy': quizLevel = QuizLevel.easy; break;
-      case 'sedang': case 'medium': quizLevel = QuizLevel.medium; break;
-      case 'sulit': case 'hard': quizLevel = QuizLevel.hard; break;
-    }
-    
-    return QuizQuestion(
-      id: map['id']?.toString() ?? '',
-      question: map['question'] ?? map['soal'] ?? '',
-      options: options,
-      correctAnswerIndex: correctIndex,
-      level: quizLevel,
-      explanation: map['explanation'] ?? '',
+  factory Quiz.fromJson(Map<String, dynamic> json) {
+    return Quiz(
+      id: json['id']?.toString() ?? '',
+      soal: json['soal']?.toString() ?? '',
+      pilihanA: json['pilihan_a']?.toString() ?? '',
+      pilihanB: json['pilihan_b']?.toString() ?? '',
+      pilihanC: json['pilihan_c']?.toString() ?? '',
+      pilihanD: json['pilihan_d']?.toString() ?? '',
+      jawabanBenar: json['jawaban_benar']?.toString() ?? '',
+      level: json['level']?.toString() ?? 'mudah',
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'question': question,
-      'options': options,
-      'correctAnswerIndex': correctAnswerIndex,
-      'level': level.toString().split('.').last,
-      'explanation': explanation,
+      'soal': soal,
+      'pilihan_a': pilihanA,
+      'pilihan_b': pilihanB,
+      'pilihan_c': pilihanC,
+      'pilihan_d': pilihanD,
+      'jawaban_benar': jawabanBenar,
+      'level': level,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
   }
-}
 
-class QuizResult {
-  final int totalQuestions;
-  final int correctAnswers;
-  final int wrongAnswers;
-  final double percentage;
-  final DateTime completedAt;
+  @override
+  String toString() {
+    return 'Quiz(id: $id, soal: $soal, level: $level)';
+  }
 
-  QuizResult({
-    required this.totalQuestions,
-    required this.correctAnswers,
-    required this.wrongAnswers,
-    required this.percentage,
-    required this.completedAt,
-  });
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Quiz && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  // Helper methods
+  String get levelDisplayName {
+    switch (level) {
+      case 'mudah':
+        return 'Mudah';
+      case 'sedang':
+        return 'Sedang';
+      case 'sulit':
+        return 'Sulit';
+      default:
+        return level;
+    }
+  }
 }
