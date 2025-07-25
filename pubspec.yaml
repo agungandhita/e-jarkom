@@ -49,6 +49,9 @@ dependencies:
   image_picker: ^1.0.7
   cached_network_image: ^3.3.0
   
+  # Cryptography for PDF caching
+  crypto: ^3.0.3
+  
   # Video player
   youtube_player_flutter: ^9.0.3
   

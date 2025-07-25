@@ -5,6 +5,7 @@ import '../../presentation/providers/tool_provider.dart';
 import '../../presentation/providers/auth_provider.dart';
 import '../../presentation/widgets/common/custom_text_field.dart';
 import '../../models/tool_model.dart';
+import '../../widgets/custom_network_image.dart';
 import 'tool_detail_screen.dart';
 
 class ToolsListScreen extends StatefulWidget {
@@ -553,34 +554,13 @@ class _ToolsListScreenState extends State<ToolsListScreen>
                   color: AppConstants.primaryColor.withOpacity(0.1),
                   child: Stack(
                     children: [
-                      Image.network(
-                        tool.displayImageUrl,
-                        fit: BoxFit.cover,
+                      ToolImage(
+                        imageUrl: tool.gambar,
+                        toolName: tool.nama,
                         width: double.infinity,
                         height: double.infinity,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            color: Colors.grey.shade300,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                value:
-                                    loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                    : null,
-                                color: AppConstants.primaryColor,
-                              ),
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          print('Error loading tool image: $error');
-                          print(
-                            'Tool: ${tool.nama}, Image URL: ${tool.displayImageUrl}',
-                          );
-                          return _buildPlaceholderImage(theme);
-                        },
+                        fit: BoxFit.cover,
+                        showDebugInfo: false,
                       ),
 
                       // Status Badges
@@ -792,43 +772,14 @@ class _ToolsListScreenState extends State<ToolsListScreen>
                 width: 80,
                 height: 80,
                 color: AppConstants.primaryColor.withOpacity(0.1),
-                // ignore: unnecessary_null_comparison
-                child:
-                    tool.displayImageUrl != null &&
-                        tool.displayImageUrl.isNotEmpty
-                    ? Image.network(
-                        tool.displayImageUrl,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                  : null,
-                              color: AppConstants.primaryColor,
-                              strokeWidth: 2,
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          print('Error loading tool list image: $error');
-                          print(
-                            'Tool: ${tool.nama}, Image URL: ${tool.displayImageUrl}',
-                          );
-                          return Icon(
-                            Icons.build,
-                            size: 32,
-                            color: AppConstants.primaryColor,
-                          );
-                        },
-                      )
-                    : Icon(
-                        Icons.build,
-                        size: 32,
-                        color: AppConstants.primaryColor,
-                      ),
+                child: ToolImage(
+                  imageUrl: tool.gambar,
+                  toolName: tool.nama,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  showDebugInfo: false,
+                ),
               ),
             ),
 

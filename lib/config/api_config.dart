@@ -1,12 +1,21 @@
 class ApiConfig {
   // Base URL untuk komunikasi dengan backend Laravel
-  static const String baseUrl = 'https://c199ade72ebd.ngrok-free.app/api';
+  static const String baseUrl = 'https://63fca316627b.ngrok-free.app/api';
 
   // Headers default untuk API requests
   static const Map<String, String> defaultHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'ngrok-skip-browser-warning': 'true',
+    'User-Agent': 'Flutter-App/1.0',
+  };
+
+  // Additional headers for ngrok compatibility
+  static const Map<String, String> ngrokHeaders = {
+    'ngrok-skip-browser-warning': 'true',
+    'User-Agent': 'Flutter-App/1.0',
+    'Accept': 'application/json, image/*, application/pdf',
+    'Cache-Control': 'no-cache',
   };
 
   // Timeout untuk HTTP requests (dalam detik)

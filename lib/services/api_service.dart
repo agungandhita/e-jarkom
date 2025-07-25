@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import '../config/api_config.dart';
+import '../services/url_service.dart';
 
 class ApiService {
   late Dio _dio;
@@ -14,15 +15,49 @@ class ApiService {
       BaseOptions(
         baseUrl: ApiConfig.baseUrl,
         connectTimeout: Duration(seconds: ApiConfig.timeoutDuration),
-        receiveTimeout: Duration(seconds: ApiConfig.timeoutDuration),
-        headers: ApiConfig.defaultHeaders,
+        receiveTimeout: Duration(
+          seconds: ApiConfig.timeoutDuration * 2,
+        ), // Longer for large responses
+        sendTimeout: Duration(seconds: ApiConfig.timeoutDuration),
+        headers: _getEnhancedHeaders(),
       ),
     );
 
     _setupInterceptors();
   }
 
+  // Get enhanced headers with ngrok support
+  Map<String, String> _getEnhancedHeaders() {
+    Map<String, String> headers = Map.from(ApiConfig.defaultHeaders);
+
+    // Add ngrok-specific headers if using ngrok
+    if (UrlService.isNgrokUrl(ApiConfig.baseUrl)) {
+      headers.addAll(UrlService.getNgrokHeaders());
+    }
+
+    // Add additional headers for better compatibility
+    headers.addAll({
+      'User-Agent': 'Flutter-App/1.0',
+      'Cache-Control': 'no-cache',
+    });
+
+    return headers;
+  }
+
   void _setupInterceptors() {
+    // Add logging interceptor for debugging
+    _dio.interceptors.add(
+      LogInterceptor(
+        requestBody: false, // Don't log request body to avoid sensitive data
+        responseBody: false, // Don't log response body to reduce noise
+        requestHeader: true,
+        responseHeader: false,
+        error: true,
+        logPrint: (obj) => print('API Service: $obj'),
+      ),
+    );
+
+    // Add retry interceptor for network issues
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -30,18 +65,68 @@ class ApiService {
           if (_token != null) {
             options.headers['Authorization'] = 'Bearer $_token';
           }
+
+          // Ensure ngrok headers are present for ngrok URLs
+          if (UrlService.isNgrokUrl(options.uri.toString())) {
+            options.headers.addAll(UrlService.getNgrokHeaders());
+          }
+
           handler.next(options);
         },
         onError: (error, handler) {
+          print('API Service Error: ${error.message}');
+          print('Status Code: ${error.response?.statusCode}');
+          print('URL: ${error.requestOptions.uri}');
+
           // Handle common errors
           if (error.response?.statusCode == 401) {
             // Token expired, logout user
             _clearToken();
           }
+
+          // Retry logic for network errors
+          // if (_shouldRetry(error)) {
+          //   return _retryRequest(error, handler);
+          // }
+
           handler.next(error);
         },
       ),
     );
+  }
+
+  // Check if request should be retried
+  bool _shouldRetry(DioException error) {
+    return error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.connectionError ||
+        (error.response?.statusCode != null &&
+            error.response!.statusCode! >= 500);
+  }
+
+  // Retry request with exponential backoff
+  Future<void> _retryRequest(
+    DioException error,
+    ErrorInterceptorHandler handler,
+  ) async {
+    const maxRetries = 3;
+    const baseDelay = Duration(seconds: 1);
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      await Future.delayed(Duration(seconds: baseDelay.inSeconds * attempt));
+
+      try {
+        print('API Service: Retrying request (attempt $attempt/$maxRetries)');
+        final response = await _dio.fetch(error.requestOptions);
+        handler.resolve(response);
+        return;
+      } catch (e) {
+        if (attempt == maxRetries) {
+          handler.next(error);
+          return;
+        }
+      }
+    }
   }
 
   void setToken(String token) {

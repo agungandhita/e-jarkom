@@ -1,3 +1,5 @@
+import '../services/url_service.dart';
+
 class Tool {
   final int id; // Changed from String to int to match Laravel auto-increment
   final String nama;
@@ -254,36 +256,37 @@ class Tool {
   }
 
   String get displayImageUrl {
+    // Import UrlService at the top of the file if not already imported
+    // Use the centralized URL service for consistent URL handling
+    return _getImageUrl();
+  }
+
+  String _getImageUrl() {
     if (hasImage && gambar!.isNotEmpty) {
       // If it's already a full URL, return as is
       if (gambar!.startsWith('http')) {
         return gambar!;
       }
-      // For relative URLs, construct with base URL
-      const String baseUrl = 'https://c199ade72ebd.ngrok-free.app';
-      if (gambar!.startsWith('/')) {
-        return '$baseUrl${gambar!}';
-      }
-      // If it's a relative path without leading slash
-      return '$baseUrl/$gambar';
+      // Use UrlService for consistent URL construction
+      return UrlService.constructImageUrl(gambar!);
     }
     // Fallback to placeholder with better styling
     return 'https://via.placeholder.com/400x300/E3F2FD/1976D2?text=${Uri.encodeComponent(nama.length > 20 ? nama.substring(0, 20) + '...' : nama)}';
   }
 
   String get displayPdfUrl {
+    // Use the centralized URL service for consistent URL handling
+    return _getPdfUrl();
+  }
+
+  String _getPdfUrl() {
     if (hasPdf && filePdf!.isNotEmpty) {
       // If it's already a full URL, return as is
       if (filePdf!.startsWith('http')) {
         return filePdf!;
       }
-      // For relative URLs, construct with base URL
-      const String baseUrl = 'https://c199ade72ebd.ngrok-free.app';
-      if (filePdf!.startsWith('/')) {
-        return '$baseUrl${filePdf!}';
-      }
-      // If it's a relative path without leading slash
-      return '$baseUrl/$filePdf';
+      // Use UrlService for consistent URL construction
+      return UrlService.constructPdfUrl(filePdf!);
     }
     return '';
   }

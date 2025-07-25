@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 // import 'dart:io';
 import '../../core/constants/app_constants.dart';
 import '../../presentation/providers/tool_provider.dart';
 import '../../models/tool_model.dart';
+import '../../widgets/custom_network_image.dart';
+import '../../services/pdf_service.dart';
 import 'pdf_viewer_screen.dart';
 
 class ToolDetailScreen extends StatefulWidget {
@@ -176,34 +177,15 @@ class _ToolDetailScreenState extends State<ToolDetailScreen>
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // Tool Image
-            if (widget.tool.displayImageUrl.isNotEmpty)
-              Image.network(
-                widget.tool.displayImageUrl,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    color: Colors.grey.shade300,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                            : null,
-                        color: AppConstants.primaryColor,
-                      ),
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  print('Error loading image: $error');
-                  print('Image URL: ${widget.tool.displayImageUrl}');
-                  return _buildPlaceholderImage();
-                },
-              )
-            else
-              _buildPlaceholderImage(),
+            // Tool Image with enhanced loading
+            ToolImage(
+              imageUrl: widget.tool.gambar,
+              toolName: widget.tool.nama,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              showDebugInfo: true, // Enable for debugging
+            ),
 
             // Gradient Overlay
             Container(
@@ -1095,42 +1077,123 @@ class _ToolDetailScreenState extends State<ToolDetailScreen>
       return;
     }
 
-    try {
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
+    // Show enhanced loading dialog with progress
+    double downloadProgress = 0.0;
+    bool isDownloading = true;
 
-      // Download PDF file
-      final dio = Dio();
-      final dir = await getTemporaryDirectory();
-      final fileName = 'manual_${widget.tool.id}.pdf';
-      final filePath = '${dir.path}/$fileName';
-
-      // Use the proper PDF URL
-      await dio.download(widget.tool.displayPdfUrl, filePath);
-
-      // Close loading dialog
-      Navigator.of(context).pop();
-
-      // Navigate to PDF viewer
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => PDFViewerScreen(
-            filePath: filePath,
-            title: 'Manual ${widget.tool.nama}',
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                value: downloadProgress > 0 ? downloadProgress : null,
+                color: AppConstants.primaryColor,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                isDownloading
+                    ? 'Mengunduh PDF... ${(downloadProgress * 100).toInt()}%'
+                    : 'Mempersiapkan PDF...',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Manual ${widget.tool.nama}',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
+      ),
+    );
+
+    try {
+      // Use the enhanced PDF service
+      final pdfService = PdfService();
+      final fileName = 'manual_${widget.tool.id}.pdf';
+
+      final result = await pdfService.downloadPdf(
+        url: widget.tool.displayPdfUrl,
+        fileName: fileName,
+        useCache: true,
+        onProgress: (progress) {
+          // Update progress in dialog
+          if (mounted) {
+            downloadProgress = progress;
+            // Note: setState is not available here, but the dialog will update
+            // when the download completes
+          }
+        },
       );
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      if (result.isSuccess) {
+        // Show success message if from cache
+        if (result.fromCache && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PDF dimuat dari cache'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+
+        // Navigate to PDF viewer
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => PDFViewerScreen(
+                filePath: result.filePath!,
+                title: 'Manual ${widget.tool.nama}',
+              ),
+            ),
+          );
+        }
+      } else {
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal mengunduh PDF: ${result.errorMessage}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+              action: SnackBarAction(
+                label: 'Coba Lagi',
+                textColor: Colors.white,
+                onPressed: () => _openPdfViewer(),
+              ),
+            ),
+          );
+        }
+      }
     } catch (e) {
       // Close loading dialog if still open
-      Navigator.of(context).pop();
+      if (mounted) {
+        Navigator.of(context).pop();
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Gagal membuka PDF: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error tidak terduga: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'Coba Lagi',
+              textColor: Colors.white,
+              onPressed: () => _openPdfViewer(),
+            ),
+          ),
+        );
+      }
     }
   }
 }
