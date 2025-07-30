@@ -79,8 +79,8 @@ class AuthRepository {
           'email': email,
           'password': password,
           'password_confirmation': confirmPassword,
-          'kelas': kelas,
-          'phone': phone,
+          if (kelas != null) 'kelas': kelas,
+          if (phone != null) 'phone': phone,
         }),
       ).timeout(AppConstants.apiTimeout);
       

@@ -39,9 +39,9 @@ class GetVideoById {
 
   GetVideoById(this._apiService);
 
-  ResultFuture<Video> call(String videoId) async {
+  ResultFuture<Video> call(int videoId) async {
     try {
-      final response = await _apiService.getVideoById(int.parse(videoId));
+      final response = await _apiService.getVideoById(videoId);
       final Video video = Video.fromJson(response['data']);
       return Right(video);
     } catch (e) {

@@ -12,8 +12,12 @@ class LoginUser {
   ResultFuture<User> call(String email, String password) async {
     try {
       final response = await _apiService.login(email, password);
-      final User user = User.fromJson(response['user']);
-      return Right(user);
+      if (response['success'] == true && response['user'] != null) {
+        final User user = User.fromJson(response['user']);
+        return Right(user);
+      } else {
+        return Left(const AuthFailure('Login gagal'));
+      }
     } catch (e) {
       return Left(_mapExceptionToFailure(e));
     }
@@ -56,8 +60,15 @@ class RegisterUser {
         passwordConfirmation: password,
         bio: null, // Optional bio field
       );
-      final User user = User.fromJson(response['user']);
-      return Right(user);
+      
+      if (response['success'] == true && 
+          response['data'] != null && 
+          response['data']['user'] != null) {
+        final User user = User.fromJson(response['data']['user']);
+        return Right(user);
+      } else {
+        return Left(const ValidationFailure('Registrasi gagal'));
+      }
     } catch (e) {
       return Left(_mapExceptionToFailure(e));
     }
@@ -114,9 +125,15 @@ class GetCurrentUser {
 
   ResultFuture<User> call() async {
     try {
-      final response = await _apiService.getCurrentUser();
-      final User user = User.fromJson(response['data']);
-      return Right(user);
+      final response = await _apiService.getProfile();
+      if (response != null && 
+          response['success'] == true && 
+          response['data'] != null) {
+        final User user = User.fromJson(response['data']);
+        return Right(user);
+      } else {
+        return Left(const AuthFailure('Gagal mengambil data pengguna'));
+      }
     } catch (e) {
       return Left(_mapExceptionToFailure(e));
     }

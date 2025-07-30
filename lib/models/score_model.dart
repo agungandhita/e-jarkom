@@ -8,18 +8,8 @@ class ScoreModel {
   final int salah;
   final DateTime tanggal;
   final DateTime createdAt;
-  final DateTime updatedAt;
   final String? userName;
   final String? userClass;
-
-  // Computed properties
-  double get percentage => totalSoal > 0 ? (benar / totalSoal * 100) : 0.0;
-
-  // Compatibility getters for existing code
-  int get score => skor;
-  int get totalQuestions => totalSoal;
-  int get correctAnswers => benar;
-  int get wrongAnswers => salah;
 
   ScoreModel({
     required this.id,
@@ -31,35 +21,27 @@ class ScoreModel {
     required this.salah,
     required this.tanggal,
     required this.createdAt,
-    required this.updatedAt,
     this.userName,
     this.userClass,
   });
 
-  factory ScoreModel.fromMap(Map<String, dynamic> map) {
+  factory ScoreModel.fromJson(Map<String, dynamic> json) {
     return ScoreModel(
-      id: map['id']?.toString() ?? '',
-      userId: map['user_id']?.toString() ?? '',
-      level: map['level']?.toString() ?? '',
-      skor: map['skor'] ?? 0,
-      totalSoal: map['total_soal'] ?? 0,
-      benar: map['benar'] ?? 0,
-      salah: map['salah'] ?? 0,
-      tanggal:
-          DateTime.tryParse(map['tanggal']?.toString() ?? '') ?? DateTime.now(),
-      createdAt:
-          DateTime.tryParse(map['created_at']?.toString() ?? '') ??
-          DateTime.now(),
-      updatedAt:
-          DateTime.tryParse(map['updated_at']?.toString() ?? '') ??
-          DateTime.now(),
-      userName: map['user_name'] ?? map['nama_user'] ?? map['user']?['name'],
-      userClass:
-          map['user_class'] ?? map['kelas_user'] ?? map['user']?['kelas'],
+      id: json['id']?.toString() ?? '',
+      userId: json['user_id']?.toString() ?? '',
+      level: json['level']?.toString() ?? '',
+      skor: json['skor']?.toInt() ?? 0,
+      totalSoal: json['total_soal']?.toInt() ?? 0,
+      benar: json['benar']?.toInt() ?? 0,
+      salah: json['salah']?.toInt() ?? 0,
+      tanggal: DateTime.tryParse(json['tanggal']?.toString() ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      userName: json['user_name']?.toString(),
+      userClass: json['user_class']?.toString(),
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'user_id': userId,
@@ -70,10 +52,51 @@ class ScoreModel {
       'salah': salah,
       'tanggal': tanggal.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
       if (userName != null) 'user_name': userName,
       if (userClass != null) 'user_class': userClass,
     };
+  }
+
+  // Alias methods for compatibility
+  factory ScoreModel.fromMap(Map<String, dynamic> map) => ScoreModel.fromJson(map);
+  Map<String, dynamic> toMap() => toJson();
+
+  // Getter for compatibility with quiz_provider
+  int get score => skor;
+
+  // Computed properties
+  double get percentage {
+    if (totalSoal == 0) return 0.0;
+    return (benar / totalSoal) * 100;
+  }
+
+  String get formattedPercentage {
+    return '${percentage.toStringAsFixed(1)}%';
+  }
+
+  String get levelDisplayName {
+    switch (level.toLowerCase()) {
+      case 'mudah':
+        return 'Mudah';
+      case 'sedang':
+        return 'Sedang';
+      case 'sulit':
+        return 'Sulit';
+      default:
+        return level;
+    }
+  }
+
+  String get grade {
+    if (percentage >= 90) return 'A';
+    if (percentage >= 80) return 'B';
+    if (percentage >= 70) return 'C';
+    if (percentage >= 60) return 'D';
+    return 'E';
+  }
+
+  bool get isPassed {
+    return percentage >= 60;
   }
 
   ScoreModel copyWith({
@@ -86,7 +109,6 @@ class ScoreModel {
     int? salah,
     DateTime? tanggal,
     DateTime? createdAt,
-    DateTime? updatedAt,
     String? userName,
     String? userClass,
   }) {
@@ -100,7 +122,6 @@ class ScoreModel {
       salah: salah ?? this.salah,
       tanggal: tanggal ?? this.tanggal,
       createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
       userName: userName ?? this.userName,
       userClass: userClass ?? this.userClass,
     );
@@ -108,7 +129,7 @@ class ScoreModel {
 
   @override
   String toString() {
-    return 'ScoreModel(id: $id, userId: $userId, level: $level, skor: $skor, percentage: $percentage)';
+    return 'ScoreModel(id: $id, userId: $userId, level: $level, skor: $skor, percentage: ${formattedPercentage})';
   }
 
   @override

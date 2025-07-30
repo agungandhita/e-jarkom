@@ -140,4 +140,27 @@ extension VideoSortByExtension on VideoSortBy {
         return 'Judul A-Z';
     }
   }
+
+  String get value {
+    switch (this) {
+      case VideoSortBy.newest:
+        return 'created_at';
+      case VideoSortBy.oldest:
+        return 'created_at';
+      case VideoSortBy.judul:
+        return 'judul';
+    }
+  }
+}
+
+// Extension for SortOrder
+extension SortOrderExtension on SortOrder {
+  String get value {
+    switch (this) {
+      case SortOrder.ascending:
+        return 'asc';
+      case SortOrder.descending:
+        return 'desc';
+    }
+  }
 }

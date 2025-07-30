@@ -90,7 +90,7 @@ class GetUserScores {
     try {
       final response = await _apiService.getMyScores();
       final List<ScoreModel> scores = (response['data'] as List)
-          .map((json) => ScoreModel.fromMap(json))
+          .map((json) => ScoreModel.fromJson(json))
           .toList();
       return Right(scores);
     } catch (e) {

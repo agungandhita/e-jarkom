@@ -1,161 +1,86 @@
 // Note: Video class moved to domain/entities/video.dart to avoid conflicts
 
-class VideoCategory {
+class Video {
   final String id;
-  final String name;
-  final String description;
-  final String? iconUrl;
-  final int videoCount;
-  final bool isActive;
+  final String judul;
+  final String deskripsi;
+  final String youtubeUrl;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  VideoCategory({
+  Video({
     required this.id,
-    required this.name,
-    required this.description,
-    this.iconUrl,
-    this.videoCount = 0,
-    this.isActive = true,
+    required this.judul,
+    required this.deskripsi,
+    required this.youtubeUrl,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  factory VideoCategory.fromJson(Map<String, dynamic> json) {
-    return VideoCategory(
+  factory Video.fromJson(Map<String, dynamic> json) {
+    return Video(
       id: json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? '',
-      description: json['description']?.toString() ?? '',
-      iconUrl: json['icon_url']?.toString(),
-      videoCount: json['video_count']?.toInt() ?? 0,
-      isActive: json['is_active'] == true || json['is_active'] == 1,
+      judul: json['judul']?.toString() ?? '',
+      deskripsi: json['deskripsi']?.toString() ?? '',
+      youtubeUrl: json['youtube_url']?.toString() ?? '',
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
-      'description': description,
-      'icon_url': iconUrl,
-      'video_count': videoCount,
-      'is_active': isActive,
+      'judul': judul,
+      'deskripsi': deskripsi,
+      'youtube_url': youtubeUrl,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
+  }
+
+  // Helper getters
+  String? get youtubeId {
+    final regex = RegExp(r'(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})');
+    final match = regex.firstMatch(youtubeUrl);
+    return match?.group(1);
+  }
+
+  String? get thumbnail {
+    final videoId = youtubeId;
+    if (videoId == null) return null;
+    return 'https://img.youtube.com/vi/$videoId/maxresdefault.jpg';
+  }
+
+  Video copyWith({
+    String? id,
+    String? judul,
+    String? deskripsi,
+    String? youtubeUrl,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Video(
+      id: id ?? this.id,
+      judul: judul ?? this.judul,
+      deskripsi: deskripsi ?? this.deskripsi,
+      youtubeUrl: youtubeUrl ?? this.youtubeUrl,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 
   @override
   String toString() {
-    return 'VideoCategory(id: $id, name: $name, videoCount: $videoCount)';
+    return 'Video(id: $id, judul: $judul)';
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is VideoCategory && other.id == id;
+    return other is Video && other.id == id;
   }
 
   @override
   int get hashCode => id.hashCode;
-}
-
-class VideoFilter {
-  final String? category;
-  final String? searchQuery;
-  final String sortBy;
-  final String sortOrder;
-  final int? minDuration; // in seconds
-  final int? maxDuration; // in seconds
-  final List<String> tags;
-
-  VideoFilter({
-    this.category,
-    this.searchQuery,
-    this.sortBy = 'created_at',
-    this.sortOrder = 'desc',
-    this.minDuration,
-    this.maxDuration,
-    this.tags = const [],
-  });
-
-  VideoFilter copyWith({
-    String? category,
-    String? searchQuery,
-    String? sortBy,
-    String? sortOrder,
-    int? minDuration,
-    int? maxDuration,
-    List<String>? tags,
-  }) {
-    return VideoFilter(
-      category: category ?? this.category,
-      searchQuery: searchQuery ?? this.searchQuery,
-      sortBy: sortBy ?? this.sortBy,
-      sortOrder: sortOrder ?? this.sortOrder,
-      minDuration: minDuration ?? this.minDuration,
-      maxDuration: maxDuration ?? this.maxDuration,
-      tags: tags ?? this.tags,
-    );
-  }
-
-  Map<String, dynamic> toQueryParams() {
-    final params = <String, dynamic>{};
-    
-    if (category != null && category!.isNotEmpty) {
-      params['category'] = category;
-    }
-    if (searchQuery != null && searchQuery!.isNotEmpty) {
-      params['search'] = searchQuery;
-    }
-    params['sort_by'] = sortBy;
-    params['sort_order'] = sortOrder;
-    if (minDuration != null) {
-      params['min_duration'] = minDuration;
-    }
-    if (maxDuration != null) {
-      params['max_duration'] = maxDuration;
-    }
-    if (tags.isNotEmpty) {
-      params['tags'] = tags.join(',');
-    }
-    
-    return params;
-  }
-
-  @override
-  String toString() {
-    return 'VideoFilter(category: $category, searchQuery: $searchQuery, sortBy: $sortBy)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is VideoFilter &&
-        other.category == category &&
-        other.searchQuery == searchQuery &&
-        other.sortBy == sortBy &&
-        other.sortOrder == sortOrder &&
-        other.minDuration == minDuration &&
-        other.maxDuration == maxDuration;
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(
-      category,
-      searchQuery,
-      sortBy,
-      sortOrder,
-      minDuration,
-      maxDuration,
-    );
-  }
-
-  // Helper methods
-  bool get hasActiveFilters {
-    return category != null ||
-           (searchQuery != null && searchQuery!.isNotEmpty) ||
-           minDuration != null ||
-           maxDuration != null ||
-           tags.isNotEmpty;
-  }
-
-  void clearFilters() {
-    // This would be implemented in a mutable version or through copyWith
-  }
 }

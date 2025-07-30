@@ -13,9 +13,7 @@ class QuizProvider extends ChangeNotifier {
   final ApiService _apiService;
   final StorageService _storageService;
 
-  QuizProvider({required ApiService apiService, required StorageService storageService})
-    : _apiService = apiService,
-      _storageService = storageService;
+  QuizProvider(this._apiService, this._storageService);
 
   // State variables
   QuizState _state = QuizState.idle;
@@ -325,7 +323,6 @@ class QuizProvider extends ChangeNotifier {
           salah: totalQuestions - correctAnswers,
           tanggal: DateTime.now(),
           createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
         );
 
         _state = QuizState.completed;

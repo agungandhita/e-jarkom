@@ -71,8 +71,24 @@ class AuthProvider with ChangeNotifier {
       final response = await _apiService.login(email, password);
 
       if (response['success'] == true) {
-        final userData = response['data']['user'];
-        final token = response['data']['token'];
+        // Safe null checking for response data
+        final responseData = response['data'];
+        if (responseData == null) {
+          _errorMessage = 'Data response tidak valid dari server';
+          _state = AuthState.error;
+          _setLoading(false);
+          return false;
+        }
+
+        final userData = responseData['user'];
+        final token = responseData['token'];
+
+        if (userData == null || token == null) {
+          _errorMessage = 'Data login tidak lengkap dari server';
+          _state = AuthState.error;
+          _setLoading(false);
+          return false;
+        }
 
         _currentUser = User.fromJson(userData);
         await _storageService.setAuthToken(token);
@@ -126,42 +142,78 @@ class AuthProvider with ChangeNotifier {
 
       print('Register response: $response'); // Debug log
 
-      if (response['success'] == true) {
-        // Handle different possible response structures
+      // Safe null checking for response
+      if (response == null) {
+        _errorMessage = 'Response tidak valid dari server';
+        _state = AuthState.error;
+        _setLoading(false);
+        return false;
+      }
+
+      final bool isSuccess = response['success'] == true;
+      if (isSuccess) {
+        // Safe extraction of data
+        final Map<String, dynamic>? responseData =
+            response['data'] as Map<String, dynamic>?;
+
         dynamic userData;
         String? token;
 
-        if (response['data'] != null) {
-          // Check if user data is directly in data or nested in data.user
-          if (response['data']['user'] != null) {
-            userData = response['data']['user'];
+        if (responseData != null) {
+          // Check if user data is nested in data.user or directly in data
+          if (responseData.containsKey('user') &&
+              responseData['user'] != null) {
+            userData = responseData['user'];
           } else {
-            userData = response['data'];
+            userData = responseData;
           }
-          token = response['data']['token'];
+
+          // Safe token extraction
+          token = responseData['token'] as String?;
         } else {
-          // Fallback: user data might be directly in response
+          // Fallback: check if user data is directly in response
           userData = response['user'];
-          token = response['token'];
+          token = response['token'] as String?;
         }
 
-        if (userData != null && token != null) {
-          _currentUser = User.fromJson(userData);
-          await _storageService.setAuthToken(token);
-          await _storageService.setUserData(userData);
-          _apiService.setToken(token);
+        print('UserData: $userData'); // Debug log
+        print('Token: $token'); // Debug log
 
-          _state = AuthState.authenticated;
-          _setLoading(false);
-          return true;
+        if (userData != null && token != null && token.isNotEmpty) {
+          try {
+            _currentUser = User.fromJson(userData);
+            await _storageService.setAuthToken(token);
+            await _storageService.setUserData(userData);
+            _apiService.setToken(token);
+
+            _state = AuthState.authenticated;
+            _setLoading(false);
+            return true;
+          } catch (parseError) {
+            print('Error parsing user data: $parseError');
+            _errorMessage = 'Gagal memproses data pengguna';
+            _state = AuthState.error;
+            _setLoading(false);
+            return false;
+          }
         } else {
-          _errorMessage = 'Data registrasi tidak lengkap';
+          // More detailed error message
+          List<String> missingData = [];
+          if (userData == null) missingData.add('data pengguna');
+          if (token == null || token.isEmpty)
+            missingData.add('token autentikasi');
+
+          _errorMessage =
+              'Registrasi berhasil tetapi ${missingData.join(' dan ')} tidak ditemukan';
+          print('Missing data: ${missingData.join(', ')}'); // Debug log
           _state = AuthState.error;
           _setLoading(false);
           return false;
         }
       } else {
-        _errorMessage = response['message'] ?? 'Registrasi gagal';
+        final String errorMsg =
+            response['message'] as String? ?? 'Registrasi gagal';
+        _errorMessage = errorMsg;
         _state = AuthState.error;
         _setLoading(false);
         return false;
@@ -221,10 +273,14 @@ class AuthProvider with ChangeNotifier {
 
       if (response['success'] == true) {
         final userData = response['data'];
-        _currentUser = User.fromJson(userData);
-        await _storageService.setUserData(userData);
-        notifyListeners();
-        return true;
+        if (userData != null) {
+          _currentUser = User.fromJson(userData);
+          await _storageService.setUserData(userData);
+          notifyListeners();
+          return true;
+        } else {
+          return false;
+        }
       } else {
         // If refresh fails, user might be logged out
         if (response['message']?.contains('Unauthorized') == true ||
@@ -417,5 +473,7 @@ class AuthProvider with ChangeNotifier {
     await _storageService.clearSavedCredentials();
   }
 
-  Future getSavedEmail() async {}
+  Future<String?> getSavedEmail() async {
+    return _storageService.getSavedEmail();
+  }
 }

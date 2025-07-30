@@ -1,6 +1,15 @@
 class ApiConfig {
-  // Base URL untuk komunikasi dengan backend Laravel
-  static const String baseUrl = 'https://63fca316627b.ngrok-free.app/api';
+  // Base URL for the API
+  static const String baseUrl = 'https://12c84e0e281c.ngrok-free.app/api';
+
+  // Alternative base URL for development (using ngrok or similar)
+  static const String devBaseUrl = 'https://12c84e0e281c.ngrok-free.app/api';
+
+  // Current environment
+  static const bool isDevelopment = true;
+
+  // Get the current base URL based on environment
+  static String get currentBaseUrl => isDevelopment ? devBaseUrl : baseUrl;
 
   // Headers default untuk API requests
   static const Map<String, String> defaultHeaders = {
@@ -22,40 +31,38 @@ class ApiConfig {
   static const int timeoutDuration = 30;
 
   // Authentication endpoints
-  static const String registerEndpoint = '/register';
-  static const String loginEndpoint = '/login';
-  static const String logoutEndpoint = '/logout';
-  static const String forgotPasswordEndpoint = '/forgot-password';
-  static const String resetPasswordEndpoint = '/reset-password';
-
-  // User Profile endpoints
-  static const String profileEndpoint = '/profile';
-
-  // Dashboard endpoints
-  static const String dashboardStatsEndpoint = '/dashboard/stats';
+  static const String auth = '/auth';
+  static const String login = '/login';
+  static const String register = '/register';
+  static const String logout = '/logout';
+  static const String forgotPassword = '/forgot-password';
 
   // Categories endpoints
-  static const String categoriesEndpoint = '/categories';
+  static const String categories = '/categories';
 
   // Tools endpoints
-  static const String toolsEndpoint = '/tools';
-  static const String toolsFeaturedEndpoint = '/tools/featured/list';
-  static const String toolsPopularEndpoint = '/tools/popular/list';
+  static const String tools = '/tools';
+  static const String toolsSearch = '/tools/search';
+  static const String toolsFavorites = '/tools/favorites';
 
   // Videos endpoints
-  static const String videosEndpoint = '/videos';
+  static const String videos = '/videos';
+  static const String videosSearch = '/videos/search';
 
   // Quizzes endpoints
-  static const String quizzesEndpoint = '/quizzes';
-  static const String quizzesSubmitEndpoint = '/quizzes/submit';
-  static const String quizzesHistoryEndpoint = '/quizzes/history/user';
-  static const String quizzesStatsEndpoint = '/quizzes/stats/user';
+  static const String quizzes = '/quizzes';
+  static const String quizStart = '/quiz/start';
+  static const String quizSubmit = '/quiz/submit';
+  static const String quizResults = '/quiz/results';
 
   // Scores endpoints
-  static const String scoresEndpoint = '/scores';
+  static const String scores = '/scores';
+  static const String userScores = '/user/scores';
+  static const String leaderboard = '/leaderboard';
 
-  // Favorites endpoints
-  static const String favoritesEndpoint = '/favorites';
+  // User endpoints
+  static const String userProfile = '/user/profile';
+  static const String updateProfile = '/user/profile/update';
 
   // System endpoints
   static const String csrfCookieEndpoint = '/sanctum/csrf-cookie';
@@ -80,8 +87,13 @@ class ApiConfig {
     return '$baseUrl/quizzes/$level';
   }
 
-  // Method untuk toggle favorite tool
-  static String getToggleFavoriteUrl(String toolId) {
-    return '$baseUrl/tools/$toolId/favorite';
+  // Method untuk mendapatkan category detail URL
+  static String getCategoryDetailUrl(String categoryId) {
+    return '$baseUrl/categories/$categoryId';
+  }
+
+  // Method untuk mendapatkan score detail URL
+  static String getScoreDetailUrl(String scoreId) {
+    return '$baseUrl/scores/$scoreId';
   }
 }

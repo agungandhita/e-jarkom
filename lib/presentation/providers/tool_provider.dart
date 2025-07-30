@@ -17,8 +17,6 @@ class ToolProvider extends ChangeNotifier {
   // State variables
   List<Tool> _tools = [];
   List<Tool> _filteredTools = [];
-  List<Tool> _featuredTools = [];
-  List<Tool> _popularTools = [];
   List<CategoryModel> _categories = [];
 
   Tool? _selectedTool;
@@ -40,8 +38,6 @@ class ToolProvider extends ChangeNotifier {
   // Getters
   List<Tool> get tools => _tools;
   List<Tool> get filteredTools => _filteredTools;
-  List<Tool> get featuredTools => _featuredTools;
-  List<Tool> get popularTools => _popularTools;
   List<CategoryModel> get categories => _categories;
 
   Tool? get selectedTool => _selectedTool;
@@ -66,12 +62,7 @@ class ToolProvider extends ChangeNotifier {
 
   // Initialize data
   Future<void> initialize() async {
-    await Future.wait([
-      loadCategories(),
-      loadTools(),
-      loadFeaturedTools(),
-      loadPopularTools(),
-    ]);
+    await Future.wait([loadCategories(), loadTools()]);
   }
 
   // Load all tools
@@ -137,15 +128,22 @@ class ToolProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('Exception in loadTools: $e');
-      String errorMessage = 'Gagal memuat data alat: ${e.toString()}';
+      String errorMessage = 'Gagal memuat data alat';
 
       // Handle specific error types
-      if (e.toString().contains('401')) {
-        errorMessage = '401: Sesi Anda telah berakhir. Silakan login kembali.';
-      } else if (e.toString().contains('network')) {
+      final errorString = e.toString();
+      if (errorString.contains('401')) {
+        errorMessage = 'Sesi Anda telah berakhir. Silakan login kembali.';
+      } else if (errorString.contains('500') || errorString.contains('Server Error')) {
+        errorMessage = 'Terjadi kesalahan pada server. Silakan coba lagi nanti.';
+      } else if (errorString.contains('network') || errorString.contains('Network Error')) {
         errorMessage = 'Tidak ada koneksi internet. Periksa koneksi Anda.';
-      } else if (e.toString().contains('timeout')) {
+      } else if (errorString.contains('timeout')) {
         errorMessage = 'Koneksi timeout. Coba lagi nanti.';
+      } else if (errorString.contains('404')) {
+        errorMessage = 'Data tidak ditemukan.';
+      } else {
+        errorMessage = 'Terjadi kesalahan: ${errorString}';
       }
 
       _setError(errorMessage);
@@ -158,34 +156,6 @@ class ToolProvider extends ChangeNotifier {
   Future<void> loadMoreTools() async {
     if (_isLoadingMore || !_hasMoreData) return;
     await loadTools();
-  }
-
-  // Load featured tools
-  Future<void> loadFeaturedTools() async {
-    try {
-      final response = await _apiService.getFeaturedTools();
-      if (response['success'] == true) {
-        final List<dynamic> toolsData = response['data'] ?? [];
-        _featuredTools = toolsData.map((json) => Tool.fromJson(json)).toList();
-      }
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error loading featured tools: $e');
-    }
-  }
-
-  // Load popular tools
-  Future<void> loadPopularTools() async {
-    try {
-      final response = await _apiService.getPopularTools();
-      if (response['success'] == true) {
-        final List<dynamic> toolsData = response['data'] ?? [];
-        _popularTools = toolsData.map((json) => Tool.fromJson(json)).toList();
-      }
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error loading popular tools: $e');
-    }
   }
 
   // Load categories
@@ -277,12 +247,7 @@ class ToolProvider extends ChangeNotifier {
   Future<void> refresh() async {
     _currentPage = 1;
     _hasMoreData = true;
-    await Future.wait([
-      loadTools(refresh: true),
-      loadFeaturedTools(),
-      loadPopularTools(),
-      loadCategories(),
-    ]);
+    await Future.wait([loadTools(refresh: true), loadCategories()]);
   }
 
   // Set selected tool
@@ -397,8 +362,6 @@ class ToolProvider extends ChangeNotifier {
   void clearData() {
     _tools.clear();
     _filteredTools.clear();
-    _featuredTools.clear();
-    _popularTools.clear();
     _categories.clear();
     _selectedTool = null;
     _selectedCategoryId = null;
@@ -411,20 +374,16 @@ class ToolProvider extends ChangeNotifier {
   }
 
   bool get isLoadingCategories => _isLoading && _categories.isEmpty;
-  bool get isLoadingFeatured => _featuredTools.isEmpty;
-  bool get isLoadingPopular => _popularTools.isEmpty;
 
-  Future<void> incrementToolViewCount(String toolId) async {
-    try {
-      // Convert string ID to int for API call
-      final int id = int.parse(toolId);
-      await _apiService.incrementToolView(id);
-    } catch (e) {
-      debugPrint('Error incrementing tool view count: $e');
-    }
+  Future<void> refreshTools() async {
+    _currentPage = 1;
+    _hasMoreData = true;
+    await loadTools(
+      refresh: true,
+      categoryId: _selectedCategoryId,
+      search: _searchQuery.isNotEmpty ? _searchQuery : null,
+    );
   }
-
-  Future<void> refreshTools() async {}
 
   void setSortBy(ToolSortBy name) {
     _sortBy = name;

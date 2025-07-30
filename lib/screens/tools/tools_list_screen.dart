@@ -116,7 +116,6 @@ class _ToolsListScreenState extends State<ToolsListScreen>
                 _buildSearchAndFilterSection(theme, toolProvider),
 
                 // Filter Chips (if visible)
-    
 
                 // Tools List/Grid
                 Expanded(
@@ -178,14 +177,6 @@ class _ToolsListScreenState extends State<ToolsListScreen>
             const PopupMenuItem(
               value: 'sort_name',
               child: Text('Urutkan berdasarkan Nama'),
-            ),
-            const PopupMenuItem(
-              value: 'sort_rating',
-              child: Text('Urutkan berdasarkan Rating'),
-            ),
-            const PopupMenuItem(
-              value: 'sort_views',
-              child: Text('Urutkan berdasarkan Views'),
             ),
             const PopupMenuItem(
               value: 'sort_date',
@@ -256,15 +247,6 @@ class _ToolsListScreenState extends State<ToolsListScreen>
                   AppConstants.successColor,
                 ),
               ),
-              const SizedBox(width: AppConstants.spacingSmall),
-              Expanded(
-                child: _buildStatChip(
-                  theme,
-                  'Unggulan: ${toolProvider.featuredTools.length}',
-                  Icons.star,
-                  AppConstants.warningColor,
-                ),
-              ),
             ],
           ),
         ],
@@ -307,11 +289,6 @@ class _ToolsListScreenState extends State<ToolsListScreen>
         ],
       ),
     );
-  }
-
-  Widget _buildFilterChips(ThemeData theme, ToolProvider toolProvider) {
-    // Filter section removed - showing all tools without filters
-    return const SizedBox.shrink();
   }
 
   Widget _buildToolsList(ThemeData theme, ToolProvider toolProvider) {
@@ -463,7 +440,6 @@ class _ToolsListScreenState extends State<ToolsListScreen>
               ),
               textAlign: TextAlign.center,
             ),
-
           ],
         ),
       ),
@@ -594,11 +570,12 @@ class _ToolsListScreenState extends State<ToolsListScreen>
                                     const SizedBox(width: 2),
                                     Text(
                                       'Unggulan',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                     ),
                                   ],
                                 ),
@@ -628,11 +605,12 @@ class _ToolsListScreenState extends State<ToolsListScreen>
                                     const SizedBox(width: 2),
                                     Text(
                                       'Nonaktif',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                     ),
                                   ],
                                 ),

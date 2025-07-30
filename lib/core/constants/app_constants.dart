@@ -379,6 +379,11 @@ class AppConstants {
   // ==================== PAGINATION ====================
   static const int defaultPageSize = 10;
   static const int maxPageSize = 50;
+  
+  // ==================== ADDITIONAL CONSTANTS ====================
+  static const int itemsPerPageDefault = 10;
+  static const int maxRetryAttempts = 3;
+  static const Duration retryDelay = Duration(seconds: 2);
 
   // ==================== MAIN MENU ITEMS ====================
   static const List<Map<String, dynamic>> mainMenuItems = [

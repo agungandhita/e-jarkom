@@ -3,9 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
   final SharedPreferences _prefs;
-  
+
   StorageService(this._prefs);
-  
+
   // Keys
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'user_data';
@@ -19,25 +19,25 @@ class StorageService {
   static const String _toolsKey = 'tools_cache';
   static const String _videosKey = 'videos_cache';
   static const String _categoriesKey = 'categories_cache';
-  
+
   // Auth Token
   Future<void> setAuthToken(String token) async {
     await _prefs.setString(_tokenKey, token);
   }
-  
+
   String? getAuthToken() {
     return _prefs.getString(_tokenKey);
   }
-  
+
   Future<void> clearAuthToken() async {
     await _prefs.remove(_tokenKey);
   }
-  
+
   // User Data
   Future<void> setUserData(Map<String, dynamic> userData) async {
     await _prefs.setString(_userKey, json.encode(userData));
   }
-  
+
   Map<String, dynamic>? getUserData() {
     final userDataString = _prefs.getString(_userKey);
     if (userDataString != null) {
@@ -45,120 +45,120 @@ class StorageService {
     }
     return null;
   }
-  
+
   Future<void> clearUserData() async {
     await _prefs.remove(_userKey);
   }
-  
+
   // Theme
   Future<void> setThemeMode(String themeMode) async {
     await _prefs.setString(_themeKey, themeMode);
   }
-  
+
   String? getThemeMode() {
     return _prefs.getString(_themeKey);
   }
-  
+
   // Language
   Future<void> setLanguage(String language) async {
     await _prefs.setString(_languageKey, language);
   }
-  
+
   String? getLanguage() {
     return _prefs.getString(_languageKey);
   }
-  
+
   // Onboarding
   Future<void> setOnboardingCompleted(bool completed) async {
     await _prefs.setBool(_onboardingKey, completed);
   }
-  
+
   bool getOnboardingCompleted() {
     return _prefs.getBool(_onboardingKey) ?? false;
   }
-  
+
   // Remember Me
   Future<void> setRememberMe(bool remember) async {
     await _prefs.setBool(_rememberMeKey, remember);
   }
-  
+
   bool getRememberMe() {
     return _prefs.getBool(_rememberMeKey) ?? false;
   }
-  
+
   // Saved Credentials
   Future<void> setSavedEmail(String email) async {
     await _prefs.setString(_savedEmailKey, email);
   }
-  
+
   String? getSavedEmail() {
     return _prefs.getString(_savedEmailKey);
   }
-  
+
   Future<void> setSavedPassword(String password) async {
     await _prefs.setString(_savedPasswordKey, password);
   }
-  
+
   String? getSavedPassword() {
     return _prefs.getString(_savedPasswordKey);
   }
-  
+
   Future<void> clearSavedCredentials() async {
     await _prefs.remove(_savedEmailKey);
     await _prefs.remove(_savedPasswordKey);
     await _prefs.remove(_rememberMeKey);
   }
-  
+
   // Clear all data
   Future<void> clearAll() async {
     await _prefs.clear();
   }
-  
+
   // Generic methods
   Future<void> setString(String key, String value) async {
     await _prefs.setString(key, value);
   }
-  
+
   String? getString(String key) {
     return _prefs.getString(key);
   }
-  
+
   Future<void> setBool(String key, bool value) async {
     await _prefs.setBool(key, value);
   }
-  
+
   bool? getBool(String key) {
     return _prefs.getBool(key);
   }
-  
+
   Future<void> setInt(String key, int value) async {
     await _prefs.setInt(key, value);
   }
-  
+
   int? getInt(String key) {
     return _prefs.getInt(key);
   }
-  
+
   Future<void> setDouble(String key, double value) async {
     await _prefs.setDouble(key, value);
   }
-  
+
   double? getDouble(String key) {
     return _prefs.getDouble(key);
   }
-  
+
   Future<void> setStringList(String key, List<String> value) async {
     await _prefs.setStringList(key, value);
   }
-  
+
   List<String>? getStringList(String key) {
     return _prefs.getStringList(key);
   }
-  
+
   Future<void> remove(String key) async {
     await _prefs.remove(key);
   }
-  
+
   bool containsKey(String key) {
     return _prefs.containsKey(key);
   }

@@ -70,11 +70,9 @@ class GetToolsByCategory {
 
   GetToolsByCategory(this._apiService);
 
-  ResultFuture<List<Tool>> call(String kategoriId) async {
+  ResultFuture<List<Tool>> call(int kategoriId) async {
     try {
-      final response = await _apiService.getToolsByCategory(
-        int.parse(kategoriId),
-      );
+      final response = await _apiService.getToolsByCategory(kategoriId);
       final List<Tool> tools = (response['data'] as List)
           .map((json) => Tool.fromJson(json))
           .toList();

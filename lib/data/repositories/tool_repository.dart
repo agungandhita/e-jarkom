@@ -27,7 +27,7 @@ class ToolRepository {
   // Get all tools with pagination and filters
   Future<ToolResult> getTools({
     int page = 1,
-    int limit = 20,
+    int limit = 10,
     String? search,
     String? categoryId,
     String? sortBy,

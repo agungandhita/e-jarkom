@@ -1,4 +1,3 @@
-// import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import '../config/api_config.dart';
@@ -84,49 +83,12 @@ class ApiService {
             _clearToken();
           }
 
-          // Retry logic for network errors
-          // if (_shouldRetry(error)) {
-          //   return _retryRequest(error, handler);
-          // }
+          // Handle retry logic if needed in the future
 
           handler.next(error);
         },
       ),
     );
-  }
-
-  // Check if request should be retried
-  bool _shouldRetry(DioException error) {
-    return error.type == DioExceptionType.connectionTimeout ||
-        error.type == DioExceptionType.receiveTimeout ||
-        error.type == DioExceptionType.connectionError ||
-        (error.response?.statusCode != null &&
-            error.response!.statusCode! >= 500);
-  }
-
-  // Retry request with exponential backoff
-  Future<void> _retryRequest(
-    DioException error,
-    ErrorInterceptorHandler handler,
-  ) async {
-    const maxRetries = 3;
-    const baseDelay = Duration(seconds: 1);
-
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      await Future.delayed(Duration(seconds: baseDelay.inSeconds * attempt));
-
-      try {
-        print('API Service: Retrying request (attempt $attempt/$maxRetries)');
-        final response = await _dio.fetch(error.requestOptions);
-        handler.resolve(response);
-        return;
-      } catch (e) {
-        if (attempt == maxRetries) {
-          handler.next(error);
-          return;
-        }
-      }
-    }
   }
 
   void setToken(String token) {
@@ -137,14 +99,38 @@ class ApiService {
     _token = null;
   }
 
-  // Auth endpoints
+  // User Authentication
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await _dio.post(
-        '/auth/login',
+        '/login',
         data: {'email': email, 'password': password},
       );
-      return response.data;
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data['success'] == true) {
+          final token = data['data']['token'];
+          final user = data['data']['user'];
+
+          // Store token for future requests
+          setToken(token);
+
+          return {
+            'success': true,
+            'message': data['message'] ?? 'Login successful',
+            'data': {
+              'token': token,
+              'user': user,
+            },
+          };
+        }
+      }
+
+      return {
+        'success': false,
+        'message': response.data['message'] ?? 'Login failed',
+      };
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -153,31 +139,89 @@ class ApiService {
   Future<Map<String, dynamic>> register({
     required String name,
     required String email,
-    required String kelas,
     required String password,
     required String passwordConfirmation,
-    required String phone,
+    String? kelas,
+    String? phone,
     String? bio,
   }) async {
     try {
-      final Map<String, dynamic> data = {
-        'name': name,
-        'email': email,
-        'kelas': kelas,
-        'password': password,
-        'password_confirmation': passwordConfirmation,
-        'phone': phone,
-      };
+      final response = await _dio.post(
+        '/register',
+        data: {
+          'name': name,
+          'email': email,
+          'password': password,
+          'password_confirmation': passwordConfirmation,
+          if (kelas != null) 'kelas': kelas,
+          if (phone != null) 'phone': phone,
+          if (bio != null) 'bio': bio,
+        },
+      );
 
-      // Add bio if provided
-      if (bio != null && bio.isNotEmpty) {
-        data['bio'] = bio;
+      print('API Register Response Status: ${response.statusCode}');
+      print('API Register Response Data: ${response.data}');
+
+      if (response.statusCode == 201) {
+        final data = response.data;
+        if (data != null && data['success'] == true) {
+          // Safe extraction with null checks
+          final responseData = data['data'];
+          if (responseData != null &&
+              responseData['user'] != null &&
+              responseData['token'] != null) {
+            return {
+              'success': true,
+              'message': data['message'] ?? 'Registration successful',
+              'data': {
+                'user': responseData['user'],
+                'token': responseData['token'],
+              },
+            };
+          } else {
+            return {
+              'success': false,
+              'message': 'Data registrasi tidak lengkap dari server',
+            };
+          }
+        }
       }
 
-      final response = await _dio.post('/auth/register', data: data);
-      return response.data;
+      // Handle non-201 status codes
+      final errorMessage =
+          response.data != null && response.data['message'] != null
+          ? response.data['message']
+          : 'Registration failed';
+
+      return {'success': false, 'message': errorMessage};
     } on DioException catch (e) {
-      throw _handleError(e);
+      print('API Register DioException: ${e.message}');
+      print('API Register DioException Response: ${e.response?.data}');
+
+      // Handle specific error responses
+      if (e.response != null && e.response!.data != null) {
+        final errorData = e.response!.data;
+        String errorMessage = 'Registration failed';
+
+        if (errorData is Map<String, dynamic>) {
+          errorMessage = errorData['message'] ?? errorMessage;
+        }
+
+        return {'success': false, 'message': errorMessage};
+      }
+
+      // Network or other errors
+      final error = _handleError(e);
+      return {
+        'success': false,
+        'message': error.toString().replaceFirst('Exception: ', ''),
+      };
+    } catch (e) {
+      print('API Register Unexpected Error: $e');
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan tidak terduga: ${e.toString()}',
+      };
     }
   }
 
@@ -193,19 +237,25 @@ class ApiService {
     }
   }
 
-  Future<void> logout() async {
+  Future<Map<String, dynamic>> logout() async {
     try {
-      await _dio.post('/auth/logout');
+      final response = await _dio.post('/logout');
       _clearToken();
+
+      return {
+        'success': true,
+        'message': response.data['message'] ?? 'Logout successful',
+      };
     } on DioException catch (e) {
-      throw _handleError(e);
+      _clearToken(); // Clear token even if request fails
+      return {'success': false, 'message': 'Logout failed: ${e.message}'};
     }
   }
 
   // Profile endpoints
   Future<Map<String, dynamic>> getProfile() async {
     try {
-      final response = await _dio.get('/auth/profile');
+      final response = await _dio.get('/profile');
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -229,7 +279,7 @@ class ApiService {
         );
       }
 
-      final response = await _dio.put('/auth/profile', data: formData);
+      final response = await _dio.put('/profile', data: formData);
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -294,74 +344,6 @@ class ApiService {
     }
   }
 
-  // Tools by category
-  Future<Map<String, dynamic>> getToolsByCategory(int categoryId) async {
-    try {
-      final response = await _dio.get('/tools/category/$categoryId');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  Future<void> incrementToolView(int id) async {
-    try {
-      await _dio.post('/tools/$id/view');
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // Get Featured Tools
-  Future<Map<String, dynamic>> getFeaturedTools() async {
-    try {
-      final response = await _dio.get('/tools/featured');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // Get Popular Tools
-  Future<Map<String, dynamic>> getPopularTools() async {
-    try {
-      final response = await _dio.get('/tools/popular');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // Toggle Favorite
-  Future<Map<String, dynamic>> toggleFavorite(int toolId) async {
-    try {
-      final response = await _dio.post('/favorites/toggle/$toolId');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // Get user favorites
-  Future<Map<String, dynamic>> getFavorites() async {
-    try {
-      final response = await _dio.get('/favorites');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // Check if tool is favorited
-  Future<Map<String, dynamic>> checkFavorite(int toolId) async {
-    try {
-      final response = await _dio.get('/favorites/check/$toolId');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
   // Categories endpoints
   Future<Map<String, dynamic>> getCategories() async {
     try {
@@ -410,51 +392,11 @@ class ApiService {
     }
   }
 
-  // Get video by ID (alias for compatibility)
-  Future<Map<String, dynamic>> getVideoById(int id) async {
-    try {
-      final response = await _dio.get('/videos/$id');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // Videos by category
-  Future<Map<String, dynamic>> getVideosByCategory(int categoryId) async {
-    try {
-      final response = await _dio.get('/videos/category/$categoryId');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
   // Quiz endpoints
-  // Get quiz levels
-  Future<Map<String, dynamic>> getQuizLevels() async {
-    try {
-      final response = await _dio.get('/quiz/levels');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
   // Get quiz by level
   Future<Map<String, dynamic>> getQuizByLevel(String level) async {
     try {
-      final response = await _dio.get('/quiz/$level');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // Get quiz questions by level
-  Future<Map<String, dynamic>> getQuizQuestions(String level) async {
-    try {
-      final response = await _dio.get('/quiz/$level/questions');
+      final response = await _dio.get('/quizzes/$level');
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -473,7 +415,7 @@ class ApiService {
       if (limit != null) queryParams['limit'] = limit;
 
       final response = await _dio.get(
-        '/quiz/$level',
+        '/quizzes/$level',
         queryParameters: queryParams,
       );
       return response.data;
@@ -487,7 +429,7 @@ class ApiService {
     Map<String, dynamic> answers,
   ) async {
     try {
-      final response = await _dio.post('/quiz/submit', data: answers);
+      final response = await _dio.post('/quizzes/submit', data: answers);
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -497,7 +439,17 @@ class ApiService {
   // Get quiz history
   Future<Map<String, dynamic>> getQuizHistory() async {
     try {
-      final response = await _dio.get('/quiz/history');
+      final response = await _dio.get('/quizzes/history/user');
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Get quiz stats
+  Future<Map<String, dynamic>> getQuizStats() async {
+    try {
+      final response = await _dio.get('/quizzes/stats/user');
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -508,7 +460,29 @@ class ApiService {
   // Get my scores
   Future<Map<String, dynamic>> getMyScores() async {
     try {
-      final response = await _dio.get('/scores/my-scores');
+      final response = await _dio.get('/scores');
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Store score
+  Future<Map<String, dynamic>> storeScore(
+    Map<String, dynamic> scoreData,
+  ) async {
+    try {
+      final response = await _dio.post('/scores', data: scoreData);
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Get score by ID
+  Future<Map<String, dynamic>> getScore(int id) async {
+    try {
+      final response = await _dio.get('/scores/$id');
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -532,7 +506,7 @@ class ApiService {
         'salah': totalSoal - benar,
         if (timeSpent != null) 'time_spent': timeSpent,
       };
-      final response = await _dio.post('/quiz/submit', data: data);
+      final response = await _dio.post('/quizzes/submit', data: data);
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -551,44 +525,28 @@ class ApiService {
       if (limit != null) queryParams['limit'] = limit;
       if (level != null) queryParams['level'] = level;
 
-      final response = await _dio.get(
-        '/scores/my-scores',
-        queryParameters: queryParams,
-      );
+      final response = await _dio.get('/scores', queryParameters: queryParams);
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
     }
   }
 
-  // Get leaderboard with optional parameters
+  // Get leaderboard
   Future<Map<String, dynamic>> getLeaderboard({
     String? level,
     int? limit,
   }) async {
     try {
-      String endpoint = '/scores/leaderboard';
       Map<String, dynamic> queryParams = {};
-
-      if (level != null && level != 'all') {
-        endpoint = '/scores/leaderboard/$level';
-      }
-
       if (limit != null) {
         queryParams['limit'] = limit;
       }
 
-      final response = await _dio.get(endpoint, queryParameters: queryParams);
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // Get leaderboard by level
-  Future<Map<String, dynamic>> getLeaderboardByLevel(String level) async {
-    try {
-      final response = await _dio.get('/scores/leaderboard/$level');
+      final response = await _dio.get(
+        '/leaderboard',
+        queryParameters: queryParams,
+      );
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -606,20 +564,10 @@ class ApiService {
     }
   }
 
-  // Get user stats
-  Future<Map<String, dynamic>> getUserStats() async {
+  // Get app stats
+  Future<Map<String, dynamic>> getAppStats() async {
     try {
-      final response = await _dio.get('/users/stats');
-      return response.data;
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // Get recent activity
-  Future<Map<String, dynamic>> getRecentActivity() async {
-    try {
-      final response = await _dio.get('/dashboard/recent-activity');
+      final response = await _dio.get('/app/stats');
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -658,11 +606,54 @@ class ApiService {
     }
   }
 
-  Future getCurrentUser() async {}
+  // Get tools by category
+  Future<Map<String, dynamic>> getToolsByCategory(int categoryId) async {
+    try {
+      final response = await _dio.get('/tools', queryParameters: {
+        'category_id': categoryId,
+        'per_page': 50, // Get more items for category view
+      });
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
 
+  // Get quiz questions by level
+  Future<Map<String, dynamic>> getQuizQuestions(String level) async {
+    try {
+      final response = await _dio.get('/quizzes/$level/questions');
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Update video view count
   Future<void> updateVideoView(int videoId) async {
     try {
-      await _dio.post('/videos/$videoId/views');
+      await _dio.post('/videos/$videoId/view');
+    } on DioException catch (e) {
+      // Don't throw error for view tracking, just log it
+      print('Failed to update video view: ${e.message}');
+    }
+  }
+
+  // Get video by ID
+  Future<Map<String, dynamic>> getVideoById(int videoId) async {
+    try {
+      final response = await _dio.get('/videos/$videoId');
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Get user stats
+  Future<Map<String, dynamic>> getUserStats() async {
+    try {
+      final response = await _dio.get('/user/stats');
+      return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
     }

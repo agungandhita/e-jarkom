@@ -19,25 +19,29 @@ class VideoRepository {
     int page = 1,
     int limit = 10,
     String? search,
-    VideoSortBy sortBy = VideoSortBy.newest,
-    SortOrder sortOrder = SortOrder.descending,
+    String? sortBy,
+    String? sortOrder,
   }) async {
     try {
-      final queryParams = {
+      final queryParams = <String, dynamic>{
         'page': page,
-        'limit': limit,
-        'sort_by': _getSortByString(sortBy),
-        'sort_order': sortOrder == SortOrder.ascending ? 'asc' : 'desc',
+        'per_page': limit,
       };
 
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
       }
+      if (sortBy != null && sortBy.isNotEmpty) {
+        queryParams['sort_by'] = sortBy;
+      }
+      if (sortOrder != null && sortOrder.isNotEmpty) {
+        queryParams['sort_order'] = sortOrder;
+      }
 
       final response = await _dio.get('/videos', queryParameters: queryParams);
 
       if (response.statusCode == 200) {
-        final List<dynamic> videosJson = response.data['data'] ?? [];
+        final List<dynamic> videosJson = response.data['data']['data'] ?? [];
         final videos = videosJson.map((json) => Video.fromJson(json)).toList();
 
         // Cache videos for offline access
@@ -60,79 +64,7 @@ class VideoRepository {
     }
   }
 
-  // Get featured videos
-  Future<List<Video>> getFeaturedVideos({int limit = 5}) async {
-    try {
-      final response = await _dio.get(
-        '/videos/featured',
-        queryParameters: {'limit': limit},
-      );
 
-      if (response.statusCode == 200) {
-        final List<dynamic> videosJson = response.data['data'] ?? [];
-        final videos = videosJson.map((json) => Video.fromJson(json)).toList();
-
-        // Cache featured videos
-        await _localStorage!.cacheData(
-          'featured_videos',
-          videos.map((v) => v.toJson()).toList(),
-        );
-
-        return videos;
-      } else {
-        throw Exception(
-          'Failed to load featured videos: ${response.statusMessage}',
-        );
-      }
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        // Try to load from cache when offline
-        return await _getCachedFeaturedVideos();
-      }
-      throw _handleDioError(e);
-    } catch (e) {
-      throw Exception('Unknown error occurred: $e');
-    }
-  }
-
-  // Get popular videos
-  Future<List<Video>> getPopularVideos({int limit = 5}) async {
-    try {
-      final response = await _dio.get(
-        '/videos/popular',
-        queryParameters: {'limit': limit},
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> videosJson = response.data['data'] ?? [];
-        final videos = videosJson.map((json) => Video.fromJson(json)).toList();
-
-        // Cache popular videos
-        await _localStorage!.cacheData(
-          'popular_videos',
-          videos.map((v) => v.toJson()).toList(),
-        );
-
-        return videos;
-      } else {
-        throw Exception(
-          'Failed to load popular videos: ${response.statusMessage}',
-        );
-      }
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.receiveTimeout ||
-          e.type == DioExceptionType.connectionError) {
-        // Try to load from cache when offline
-        return await _getCachedPopularVideos();
-      }
-      throw _handleDioError(e);
-    } catch (e) {
-      throw Exception('Unknown error occurred: $e');
-    }
-  }
 
   // Get video by ID
   Future<Video?> getVideoById(String id) async {
@@ -145,7 +77,9 @@ class VideoRepository {
           final video = Video.fromJson(videoJson);
 
           // Cache video details
-          await _localStorage!.cacheData('video_$id', video.toJson());
+          if (_localStorage != null) {
+            await _localStorage.cacheData('video_$id', video.toJson());
+          }
 
           return video;
         }
@@ -192,7 +126,9 @@ class VideoRepository {
         final updatedVideo = Video.fromJson(videoJson);
 
         // Update cache
-        await _localStorage!.cacheData('video_$id', updatedVideo.toJson());
+        if (_localStorage != null) {
+          await _localStorage.cacheData('video_$id', updatedVideo.toJson());
+        }
 
         return updatedVideo;
       } else {
@@ -215,7 +151,9 @@ class VideoRepository {
       }
 
       // Remove from cache
-      await _localStorage!.removeData('video_$id');
+      if (_localStorage != null) {
+        await _localStorage.removeData('video_$id');
+      }
     } on DioException catch (e) {
       throw _handleDioError(e);
     } catch (e) {
@@ -237,6 +175,58 @@ class VideoRepository {
   }
 
   // Note: Rating functionality removed due to simplified video model
+
+  // Get featured videos
+  Future<List<Video>> getFeaturedVideos({int limit = 5}) async {
+    try {
+      final response = await _dio.get('/videos/featured', queryParameters: {
+        'limit': limit,
+      });
+
+      if (response.statusCode == 200) {
+        final List<dynamic> videosJson = response.data['data'] ?? [];
+        return videosJson.map((json) => Video.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load featured videos: ${response.statusMessage}');
+      }
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.connectionError) {
+        // Return empty list when offline
+        return [];
+      }
+      throw _handleDioError(e);
+    } catch (e) {
+      throw Exception('Unknown error occurred: $e');
+    }
+  }
+
+  // Get popular videos
+  Future<List<Video>> getPopularVideos({int limit = 10}) async {
+    try {
+      final response = await _dio.get('/videos/popular', queryParameters: {
+        'limit': limit,
+      });
+
+      if (response.statusCode == 200) {
+        final List<dynamic> videosJson = response.data['data'] ?? [];
+        return videosJson.map((json) => Video.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load popular videos: ${response.statusMessage}');
+      }
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout ||
+          e.type == DioExceptionType.connectionError) {
+        // Return empty list when offline
+        return [];
+      }
+      throw _handleDioError(e);
+    } catch (e) {
+      throw Exception('Unknown error occurred: $e');
+    }
+  }
 
   // Search videos
   Future<List<Video>> searchVideos(
@@ -280,35 +270,12 @@ class VideoRepository {
     return [];
   }
 
-  Future<List<Video>> _getCachedFeaturedVideos() async {
-    try {
-      final cachedData = await _localStorage!.getCachedData('featured_videos');
-      if (cachedData != null) {
-        final List<dynamic> videosJson = cachedData;
-        return videosJson.map((json) => Video.fromJson(json)).toList();
-      }
-    } catch (e) {
-      debugPrint('Failed to get cached featured videos: $e');
-    }
-    return [];
-  }
 
-  Future<List<Video>> _getCachedPopularVideos() async {
-    try {
-      final cachedData = await _localStorage!.getCachedData('popular_videos');
-      if (cachedData != null) {
-        final List<dynamic> videosJson = cachedData;
-        return videosJson.map((json) => Video.fromJson(json)).toList();
-      }
-    } catch (e) {
-      debugPrint('Failed to get cached popular videos: $e');
-    }
-    return [];
-  }
 
   Future<Video?> _getCachedVideoById(String id) async {
+    if (_localStorage == null) return null;
     try {
-      final cachedData = await _localStorage!.getCachedData('video_$id');
+      final cachedData = await _localStorage.getCachedData('video_$id');
       if (cachedData != null) {
         return Video.fromJson(cachedData);
       }
@@ -318,17 +285,7 @@ class VideoRepository {
     return null;
   }
 
-  // Helper methods
-  String _getSortByString(VideoSortBy sortBy) {
-    switch (sortBy) {
-      case VideoSortBy.newest:
-        return 'created_at';
-      case VideoSortBy.oldest:
-        return 'created_at';
-      case VideoSortBy.judul:
-        return 'judul';
-    }
-  }
+
 
   Exception _handleDioError(DioException e) {
     switch (e.type) {
@@ -380,13 +337,9 @@ class VideoRepository {
   // Clear all video cache
   Future<void> clearCache() async {
     try {
-      // Clear all video-related cache
-      await _localStorage!.removeData('featured_videos');
-      await _localStorage.removeData('popular_videos');
-
       // Clear paginated video cache (assuming max 10 pages)
       for (int i = 1; i <= 10; i++) {
-        await _localStorage.removeData('videos_page_$i');
+        await _localStorage!.removeData('videos_page_$i');
       }
     } catch (e) {
       debugPrint('Failed to clear video cache: $e');

@@ -1,40 +1,45 @@
 class Quiz {
   final String id;
   final String soal;
-  final String pilihanA;
-  final String pilihanB;
-  final String pilihanC;
-  final String pilihanD;
-  final String jawabanBenar;
+  final Map<String, String> pilihan;
   final String level;
   final DateTime createdAt;
-  final DateTime updatedAt;
 
   Quiz({
     required this.id,
     required this.soal,
-    required this.pilihanA,
-    required this.pilihanB,
-    required this.pilihanC,
-    required this.pilihanD,
-    required this.jawabanBenar,
+    required this.pilihan,
     required this.level,
     required this.createdAt,
-    required this.updatedAt,
   });
 
   factory Quiz.fromJson(Map<String, dynamic> json) {
+    // Handle pilihan as nested object from Laravel API
+    Map<String, String> pilihanMap = {};
+    if (json['pilihan'] is Map) {
+      final pilihanData = json['pilihan'] as Map<String, dynamic>;
+      pilihanMap = {
+        'a': pilihanData['a']?.toString() ?? '',
+        'b': pilihanData['b']?.toString() ?? '',
+        'c': pilihanData['c']?.toString() ?? '',
+        'd': pilihanData['d']?.toString() ?? '',
+      };
+    } else {
+      // Fallback for individual fields
+      pilihanMap = {
+        'a': json['pilihan_a']?.toString() ?? '',
+        'b': json['pilihan_b']?.toString() ?? '',
+        'c': json['pilihan_c']?.toString() ?? '',
+        'd': json['pilihan_d']?.toString() ?? '',
+      };
+    }
+
     return Quiz(
       id: json['id']?.toString() ?? '',
       soal: json['soal']?.toString() ?? '',
-      pilihanA: json['pilihan_a']?.toString() ?? '',
-      pilihanB: json['pilihan_b']?.toString() ?? '',
-      pilihanC: json['pilihan_c']?.toString() ?? '',
-      pilihanD: json['pilihan_d']?.toString() ?? '',
-      jawabanBenar: json['jawaban_benar']?.toString() ?? '',
-      level: json['level']?.toString() ?? 'mudah',
+      pilihan: pilihanMap,
+      level: json['level']?.toString() ?? '',
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 
@@ -42,15 +47,45 @@ class Quiz {
     return {
       'id': id,
       'soal': soal,
-      'pilihan_a': pilihanA,
-      'pilihan_b': pilihanB,
-      'pilihan_c': pilihanC,
-      'pilihan_d': pilihanD,
-      'jawaban_benar': jawabanBenar,
+      'pilihan': pilihan,
       'level': level,
       'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
     };
+  }
+
+  // Helper getters for individual options
+  String get pilihanA => pilihan['a'] ?? '';
+  String get pilihanB => pilihan['b'] ?? '';
+  String get pilihanC => pilihan['c'] ?? '';
+  String get pilihanD => pilihan['d'] ?? '';
+
+  String get levelDisplayName {
+    switch (level.toLowerCase()) {
+      case 'mudah':
+        return 'Mudah';
+      case 'sedang':
+        return 'Sedang';
+      case 'sulit':
+        return 'Sulit';
+      default:
+        return level;
+    }
+  }
+
+  Quiz copyWith({
+    String? id,
+    String? soal,
+    Map<String, String>? pilihan,
+    String? level,
+    DateTime? createdAt,
+  }) {
+    return Quiz(
+      id: id ?? this.id,
+      soal: soal ?? this.soal,
+      pilihan: pilihan ?? this.pilihan,
+      level: level ?? this.level,
+      createdAt: createdAt ?? this.createdAt,
+    );
   }
 
   @override
@@ -67,17 +102,5 @@ class Quiz {
   @override
   int get hashCode => id.hashCode;
 
-  // Helper methods
-  String get levelDisplayName {
-    switch (level) {
-      case 'mudah':
-        return 'Mudah';
-      case 'sedang':
-        return 'Sedang';
-      case 'sulit':
-        return 'Sulit';
-      default:
-        return level;
-    }
-  }
+  get jawabanBenar => null;
 }

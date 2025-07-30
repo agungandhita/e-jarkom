@@ -44,10 +44,7 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => ToolProvider(apiService)),
         ChangeNotifierProvider(
-          create: (_) => QuizProvider(
-            apiService: apiService,
-            storageService: storageService,
-          ),
+          create: (_) => QuizProvider(apiService, storageService),
         ),
         ChangeNotifierProvider(
           create: (_) =>

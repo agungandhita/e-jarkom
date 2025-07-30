@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import 'package:path_provider/path_provider.dart';
-// import 'dart:io';
 import '../../core/constants/app_constants.dart';
 import '../../presentation/providers/tool_provider.dart';
 import '../../models/tool_model.dart';
@@ -47,7 +45,6 @@ class _ToolDetailScreenState extends State<ToolDetailScreen>
 
     _initializeAnimations();
     _initializeYoutubePlayer();
-    _incrementViewCount();
   }
 
   void _initializeAnimations() {
@@ -86,11 +83,6 @@ class _ToolDetailScreenState extends State<ToolDetailScreen>
         ),
       );
     }
-  }
-
-  Future<void> _incrementViewCount() async {
-    final toolProvider = context.read<ToolProvider>();
-    await toolProvider.incrementToolViewCount(widget.tool.id as String);
   }
 
   @override

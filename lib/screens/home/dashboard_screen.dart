@@ -66,12 +66,11 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     await Future.wait(
       [
-            toolProvider.loadFeaturedTools(),
             quizProvider.loadQuizLevel(),
             quizProvider.loadUserScores(
               refresh: true,
             ), // Load user-specific quiz scores
-            videoProvider.loadFeaturedVideos(),
+            // videoProvider.loadFeaturedVideos(),
             dashboardProvider.loadDashboardStats(),
           ]
           as Iterable<Future>,
@@ -1175,8 +1174,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       );
     }
 
-    final thumbnailUrl = 'https://img.youtube.com/vi/$videoId/maxresdefault.jpg';
-    
+    final thumbnailUrl =
+        'https://img.youtube.com/vi/$videoId/maxresdefault.jpg';
+
     return Image.network(
       thumbnailUrl,
       width: double.infinity,
@@ -1200,9 +1200,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           width: double.infinity,
           height: double.infinity,
           color: Colors.grey[300],
-          child: const Center(
-            child: CircularProgressIndicator(),
-          ),
+          child: const Center(child: CircularProgressIndicator()),
         );
       },
     );

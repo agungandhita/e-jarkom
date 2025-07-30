@@ -13,18 +13,18 @@ class VideoProvider extends ChangeNotifier {
   List<Video> _filteredVideos = [];
   List<Video> _featuredVideos = [];
   List<Video> _popularVideos = [];
-  
+
   Video? _selectedVideo;
   String _searchQuery = '';
   VideoSortBy _sortBy = VideoSortBy.newest;
   SortOrder _sortOrder = SortOrder.descending;
-  
+
   bool _isLoading = false;
   bool _isLoadingMore = false;
   bool _hasMoreData = true;
   String? _errorMessage;
   Map<String, String> _validationErrors = {};
-  
+
   int _currentPage = 1;
   final int _pageSize = AppConstants.defaultPageSize;
 
@@ -33,18 +33,18 @@ class VideoProvider extends ChangeNotifier {
   List<Video> get filteredVideos => _filteredVideos;
   List<Video> get featuredVideos => _featuredVideos;
   List<Video> get popularVideos => _popularVideos;
-  
+
   Video? get selectedVideo => _selectedVideo;
   String get searchQuery => _searchQuery;
   VideoSortBy get sortBy => _sortBy;
   SortOrder get sortOrder => _sortOrder;
-  
+
   bool get isLoading => _isLoading;
   bool get isLoadingMore => _isLoadingMore;
   bool get hasMoreData => _hasMoreData;
   String? get errorMessage => _errorMessage;
   Map<String, String> get validationErrors => _validationErrors;
-  
+
   int get currentPage => _currentPage;
   bool get hasVideos => _videos.isNotEmpty;
   bool get hasFilteredVideos => _filteredVideos.isNotEmpty;
@@ -61,10 +61,7 @@ class VideoProvider extends ChangeNotifier {
   }
 
   // Load all videos
-  Future<void> loadVideos({
-    bool refresh = false,
-    String? search,
-  }) async {
+  Future<void> loadVideos({bool refresh = false, String? search}) async {
     if (refresh) {
       _currentPage = 1;
       _hasMoreData = true;
@@ -81,8 +78,8 @@ class VideoProvider extends ChangeNotifier {
         page: _currentPage,
         limit: _pageSize,
         search: search,
-        sortBy: _sortBy,
-        sortOrder: _sortOrder,
+        sortBy: _sortBy.value,
+        sortOrder: _sortOrder.value,
       );
 
       if (refresh) {
@@ -93,7 +90,7 @@ class VideoProvider extends ChangeNotifier {
 
       _hasMoreData = result.length == _pageSize;
       _currentPage++;
-      
+
       _applyFilters();
     } catch (e) {
       _setError('Gagal memuat data video: ${e.toString()}');
@@ -114,14 +111,14 @@ class VideoProvider extends ChangeNotifier {
         page: _currentPage,
         limit: _pageSize,
         search: _searchQuery.isNotEmpty ? _searchQuery : null,
-        sortBy: _sortBy,
-        sortOrder: _sortOrder,
+        sortBy: _sortBy.value,
+        sortOrder: _sortOrder.value,
       );
 
       _videos.addAll(result);
       _hasMoreData = result.length == _pageSize;
       _currentPage++;
-      
+
       _applyFilters();
     } catch (e) {
       _setError('Gagal memuat data tambahan: ${e.toString()}');
@@ -159,12 +156,12 @@ class VideoProvider extends ChangeNotifier {
     try {
       final video = await _videoRepository.getVideoById(id);
       _selectedVideo = video;
-      
+
       // Increment view count
       if (video != null) {
         await _videoRepository.incrementViewCount(id);
       }
-      
+
       notifyListeners();
       return video;
     } catch (e) {
@@ -278,7 +275,9 @@ class VideoProvider extends ChangeNotifier {
 
     // Apply search filter
     if (_searchQuery.isNotEmpty) {
-      filtered = filtered.where((video) => video.matchesSearch(_searchQuery)).toList();
+      filtered = filtered
+          .where((video) => video.matchesSearch(_searchQuery))
+          .toList();
     }
 
     _filteredVideos = filtered;
@@ -291,7 +290,7 @@ class VideoProvider extends ChangeNotifier {
     _hasMoreData = true;
     await Future.wait([
       loadVideos(refresh: true),
-      loadFeaturedVideos(),
+      // loadFeaturedVideos(),
       loadPopularVideos(),
     ]);
   }
@@ -309,26 +308,23 @@ class VideoProvider extends ChangeNotifier {
   }
 
   // Note: Category and tag-based filtering removed due to simplified video model
-  
+
   // Get related videos (basic implementation)
   List<Video> getRelatedVideos(String videoId, {int limit = 5}) {
-    return _videos
-        .where((v) => v.id != videoId)
-        .take(limit)
-        .toList();
+    return _videos.where((v) => v.id != videoId).take(limit).toList();
   }
 
   // Get recommended videos based on user preferences
   List<Video> getRecommendedVideos({int limit = 5}) {
     // Simple recommendation: mix of featured and popular videos
     final Set<Video> recommended = {};
-    
+
     // Add featured videos
     recommended.addAll(_featuredVideos.take(limit ~/ 2));
-    
+
     // Add popular videos
     recommended.addAll(_popularVideos.take(limit - recommended.length));
-    
+
     // Fill remaining with newest videos if needed
     if (recommended.length < limit) {
       final newest = _videos
@@ -336,7 +332,7 @@ class VideoProvider extends ChangeNotifier {
           .take(limit - recommended.length);
       recommended.addAll(newest);
     }
-    
+
     return recommended.toList();
   }
 
@@ -362,7 +358,8 @@ class VideoProvider extends ChangeNotifier {
   }
 
   void _handleError(dynamic error) {
-    if (error is Map<String, dynamic> && error.containsKey('validation_errors')) {
+    if (error is Map<String, dynamic> &&
+        error.containsKey('validation_errors')) {
       _validationErrors = Map<String, String>.from(error['validation_errors']);
     } else {
       _setError(error.toString());
@@ -371,7 +368,7 @@ class VideoProvider extends ChangeNotifier {
 
   // Validation helpers
   bool get hasValidationErrors => _validationErrors.isNotEmpty;
-  
+
   String? getValidationError(String field) {
     return _validationErrors[field];
   }
@@ -385,5 +382,4 @@ class VideoProvider extends ChangeNotifier {
   Future<void> clearCache() async {
     await _videoRepository.clearCache();
   }
-
 }
