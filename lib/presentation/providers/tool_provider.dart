@@ -90,7 +90,7 @@ class ToolProvider extends ChangeNotifier {
             : (_selectedCategoryId != null
                   ? int.tryParse(_selectedCategoryId!)
                   : null),
-        sort: _getSortParameter(),
+        // sort: _getSortParameter(), // Temporarily disabled to avoid backend error
         perPage: _pageSize,
       );
 
@@ -289,13 +289,13 @@ class ToolProvider extends ChangeNotifier {
       case ToolSortBy.newest:
         return 'latest';
       case ToolSortBy.oldest:
-        return 'latest'; // Will be handled by sort order
+        return 'oldest';
       case ToolSortBy.name:
         return 'name';
       case ToolSortBy.rating:
-        return 'popular'; // Assuming rating relates to popularity
+        return 'rating';
       case ToolSortBy.views:
-        return 'popular';
+        return 'views';
       default:
         return 'latest';
     }
@@ -410,5 +410,112 @@ class ToolProvider extends ChangeNotifier {
       categoryId: categoryId,
       search: _searchQuery.isNotEmpty ? _searchQuery : null,
     );
+  }
+
+  // Favorite functionality
+  Future<bool> toggleFavorite(Tool tool) async {
+    try {
+      final toolId = int.parse(tool.id);
+      Map<String, dynamic> response;
+      
+      if (tool.isFavorited == true) {
+        response = await _apiService.removeFromFavorites(toolId);
+      } else {
+        response = await _apiService.addToFavorites(toolId);
+      }
+      
+      if (response['success'] == true) {
+        // Update the tool in the list
+        final updatedTool = tool.copyWith(
+          isFavorited: !(tool.isFavorited ?? false),
+        );
+        
+        // Update in tools list
+        final index = _tools.indexWhere((t) => t.id == tool.id);
+        if (index != -1) {
+          _tools[index] = updatedTool;
+        }
+        
+        // Update in filtered tools list
+        final filteredIndex = _filteredTools.indexWhere((t) => t.id == tool.id);
+        if (filteredIndex != -1) {
+          _filteredTools[filteredIndex] = updatedTool;
+        }
+        
+        // Update selected tool if it's the same
+        if (_selectedTool?.id == tool.id) {
+          _selectedTool = updatedTool;
+        }
+        
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error toggling favorite: $e');
+      _setError('Gagal mengubah status favorit');
+      return false;
+    }
+  }
+
+  // Get favorite tools
+  Future<List<Tool>> getFavoriteTools() async {
+    try {
+      final response = await _apiService.getFavoriteTools();
+      if (response['success'] == true) {
+        final List<dynamic> favoritesData = response['data'] ?? [];
+        return favoritesData
+            .map((json) => Tool.fromJson(json['tool'] ?? json))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error loading favorite tools: $e');
+      return [];
+    }
+  }
+
+  // Rate a tool
+  Future<bool> rateTool(Tool tool, double rating) async {
+    try {
+      final toolId = int.parse(tool.id);
+      final response = await _apiService.rateTool(toolId, rating);
+      
+      if (response['success'] == true) {
+        // Update the tool with new rating data
+        final newRating = response['data']?['average_rating']?.toDouble() ?? rating;
+        final newRatingCount = response['data']?['rating_count'] ?? (tool.ratingCount + 1);
+        
+        final updatedTool = tool.copyWith(
+          rating: newRating,
+          ratingCount: newRatingCount,
+        );
+        
+        // Update in tools list
+        final index = _tools.indexWhere((t) => t.id == tool.id);
+        if (index != -1) {
+          _tools[index] = updatedTool;
+        }
+        
+        // Update in filtered tools list
+        final filteredIndex = _filteredTools.indexWhere((t) => t.id == tool.id);
+        if (filteredIndex != -1) {
+          _filteredTools[filteredIndex] = updatedTool;
+        }
+        
+        // Update selected tool if it's the same
+        if (_selectedTool?.id == tool.id) {
+          _selectedTool = updatedTool;
+        }
+        
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error rating tool: $e');
+      _setError('Gagal memberikan rating');
+      return false;
+    }
   }
 }

@@ -256,11 +256,22 @@ class _ToolDetailScreenState extends State<ToolDetailScreen>
                 contentPadding: EdgeInsets.zero,
               ),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'favorite',
               child: ListTile(
-                leading: Icon(Icons.favorite_border),
-                title: Text('Tambah ke Favorit'),
+                leading: Icon(
+                  widget.tool.isFavorited == true 
+                      ? Icons.favorite 
+                      : Icons.favorite_border,
+                  color: widget.tool.isFavorited == true 
+                      ? AppConstants.errorColor 
+                      : null,
+                ),
+                title: Text(
+                  widget.tool.isFavorited == true 
+                      ? 'Hapus dari Favorit' 
+                      : 'Tambah ke Favorit'
+                ),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -351,25 +362,34 @@ class _ToolDetailScreenState extends State<ToolDetailScreen>
               const Spacer(),
 
               // Rating
-              Row(
-                children: [
-                  Icon(Icons.star, size: 20, color: AppConstants.warningColor),
-                  const SizedBox(width: 4),
-                  Text(
-                    widget.tool.formattedRating,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    ' (${widget.tool.ratingCount})',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.bodyMedium?.color?.withOpacity(
-                        0.7,
+              GestureDetector(
+                onTap: _showRatingDialog,
+                child: Row(
+                  children: [
+                    Icon(Icons.star, size: 20, color: AppConstants.warningColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      widget.tool.formattedRating,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                    Text(
+                      ' (${widget.tool.ratingCount})',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                          0.7,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.edit,
+                      size: 16,
+                      color: AppConstants.primaryColor,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1023,10 +1043,32 @@ class _ToolDetailScreenState extends State<ToolDetailScreen>
     );
   }
 
-  void _toggleFavorite() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fitur favorit akan segera tersedia')),
-    );
+  void _toggleFavorite() async {
+    final toolProvider = context.read<ToolProvider>();
+    final success = await toolProvider.toggleFavorite(widget.tool);
+    
+    if (success) {
+      final isFavorited = !(widget.tool.isFavorited ?? false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isFavorited 
+                ? 'Alat ditambahkan ke favorit' 
+                : 'Alat dihapus dari favorit'
+          ),
+          backgroundColor: isFavorited 
+              ? AppConstants.successColor 
+              : AppConstants.warningColor,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal mengubah status favorit'),
+          backgroundColor: AppConstants.errorColor,
+        ),
+      );
+    }
   }
 
   void _reportTool() {
@@ -1060,6 +1102,112 @@ class _ToolDetailScreenState extends State<ToolDetailScreen>
       ),
     );
   }
+
+  void _showRatingDialog() {
+    double userRating = 0.0;
+    String userComment = '';
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Beri Rating'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Bagaimana pengalaman Anda dengan ${widget.tool.nama}?',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        userRating = index + 1.0;
+                      });
+                    },
+                    child: Icon(
+                      Icons.star,
+                      size: 32,
+                      color: index < userRating
+                          ? AppConstants.warningColor
+                          : Colors.grey.shade300,
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                decoration: const InputDecoration(
+                  hintText: 'Tulis komentar (opsional)',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+                onChanged: (value) {
+                  userComment = value;
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: userRating > 0
+                  ? () {
+                      Navigator.of(context).pop();
+                      _submitRating(userRating, userComment);
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppConstants.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Kirim Rating'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _submitRating(double rating, String comment) async {
+     try {
+       final toolProvider = context.read<ToolProvider>();
+       final success = await toolProvider.rateTool(
+         widget.tool,
+         rating,
+       );
+       
+       if (success) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(
+             content: Text('Rating berhasil dikirim'),
+             backgroundColor: AppConstants.successColor,
+           ),
+         );
+       } else {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(
+             content: Text('Gagal mengirim rating'),
+             backgroundColor: AppConstants.errorColor,
+           ),
+         );
+       }
+     } catch (e) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(
+           content: Text('Error: $e'),
+           backgroundColor: AppConstants.errorColor,
+         ),
+       );
+     }
+   }
 
   void _openPdfViewer() async {
     if (!widget.tool.hasPdf || widget.tool.displayPdfUrl.isEmpty) {

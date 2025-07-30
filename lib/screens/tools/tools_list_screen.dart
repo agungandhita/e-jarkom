@@ -7,6 +7,7 @@ import '../../presentation/widgets/common/custom_text_field.dart';
 import '../../models/tool_model.dart';
 import '../../widgets/custom_network_image.dart';
 import 'tool_detail_screen.dart';
+import 'favorites_screen.dart';
 
 class ToolsListScreen extends StatefulWidget {
   const ToolsListScreen({Key? key}) : super(key: key);
@@ -144,14 +145,24 @@ class _ToolsListScreenState extends State<ToolsListScreen>
       actions: [
         IconButton(
           onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const FavoritesScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.favorite),
+          tooltip: 'Favorit Saya',
+        ),
+        IconButton(
+          onPressed: () {
             setState(() {
               _isGridView = !_isGridView;
             });
           },
           icon: Icon(_isGridView ? Icons.list : Icons.grid_view),
-          tooltip: _isGridView ? 'Tampilan List' : 'Tampilan Grid',
+          tooltip: _isGridView ? 'List View' : 'Grid View',
         ),
-
         PopupMenuButton<String>(
           onSelected: (value) {
             final toolProvider = context.read<ToolProvider>();
@@ -656,6 +667,25 @@ class _ToolsListScreenState extends State<ToolsListScreen>
                           ],
                         ),
                       ),
+
+                      // Favorite Badge
+                      if (tool.isFavorited == true)
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: AppConstants.errorColor,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Icon(
+                              Icons.favorite,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -884,6 +914,14 @@ class _ToolsListScreenState extends State<ToolsListScreen>
                           size: 20,
                           color: AppConstants.errorColor,
                         ),
+                      if (tool.isFavorited == true) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.favorite,
+                          size: 20,
+                          color: AppConstants.errorColor,
+                        ),
+                      ],
                     ],
                   ),
                 ],

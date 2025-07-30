@@ -335,6 +335,50 @@ class ApiService {
     }
   }
 
+  // Add tool to favorites
+  Future<Map<String, dynamic>> addToFavorites(int toolId) async {
+    try {
+      final response = await _dio.post('/tools/favorites', data: {
+        'tool_id': toolId,
+      });
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Remove tool from favorites
+  Future<Map<String, dynamic>> removeFromFavorites(int toolId) async {
+    try {
+      final response = await _dio.delete('/tools/favorites/$toolId');
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Get user's favorite tools
+  Future<Map<String, dynamic>> getFavoriteTools() async {
+    try {
+      final response = await _dio.get('/tools/favorites');
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Rate a tool
+  Future<Map<String, dynamic>> rateTool(int toolId, double rating) async {
+    try {
+      final response = await _dio.post('/tools/$toolId/rate', data: {
+        'rating': rating,
+      });
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   Future<Map<String, dynamic>> getTool(int id) async {
     try {
       final response = await _dio.get('/tools/$id');
