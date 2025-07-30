@@ -11,7 +11,12 @@ class AuthProvider with ChangeNotifier {
   final StorageService _storageService;
 
   AuthProvider(this._apiService, this._storageService) {
-    _checkAuthStatus();
+    _initializeAuth();
+  }
+
+  // Initialize authentication on startup
+  Future<void> _initializeAuth() async {
+    await _checkAuthStatus();
   }
 
   // State variables
@@ -38,21 +43,28 @@ class AuthProvider with ChangeNotifier {
   // Check authentication status on app start
   Future<void> _checkAuthStatus() async {
     final token = _storageService.getAuthToken();
+    print('DEBUG AuthProvider: Token from storage: ${token != null ? "[TOKEN_EXISTS]" : "null"}');
+    
     if (token != null) {
       _apiService.setToken(token);
+      print('DEBUG AuthProvider: Token set in ApiService');
+      
       final userData = _storageService.getUserData();
       if (userData != null) {
         _currentUser = User.fromJson(userData);
         _state = AuthState.authenticated;
+        print('DEBUG AuthProvider: User authenticated - ${_currentUser?.name}');
         notifyListeners();
 
         // Refresh user data from server
         await refreshUser();
       } else {
+        print('DEBUG AuthProvider: No user data found, setting unauthenticated');
         _state = AuthState.unauthenticated;
         notifyListeners();
       }
     } else {
+      print('DEBUG AuthProvider: No token found, setting unauthenticated');
       _state = AuthState.unauthenticated;
       notifyListeners();
     }

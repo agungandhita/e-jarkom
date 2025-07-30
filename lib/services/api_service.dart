@@ -63,6 +63,9 @@ class ApiService {
           // Add auth token if available
           if (_token != null) {
             options.headers['Authorization'] = 'Bearer $_token';
+            print('DEBUG ApiService: Authorization header added for ${options.uri}');
+          } else {
+            print('DEBUG ApiService: No token available for ${options.uri}');
           }
 
           // Ensure ngrok headers are present for ngrok URLs
@@ -93,6 +96,7 @@ class ApiService {
 
   void setToken(String token) {
     _token = token;
+    print('DEBUG ApiService: Token set - ${token != null ? "[TOKEN_SET]" : "null"}');
   }
 
   void _clearToken() {
@@ -458,22 +462,33 @@ class ApiService {
       if (page != null) queryParams['page'] = page;
       if (limit != null) queryParams['limit'] = limit;
 
+      print('Making API request to: /quizzes/$level');
+      print('Query parameters: $queryParams');
+      
       final response = await _dio.get(
         '/quizzes/$level',
         queryParameters: queryParams,
       );
+      
+      print('API Response Status: ${response.statusCode}');
+      print('API Response Data: ${response.data}');
+      
       return response.data;
     } on DioException catch (e) {
+      print('DioException in getQuizzes: ${e.message}');
+      print('Response data: ${e.response?.data}');
+      print('Status code: ${e.response?.statusCode}');
       throw _handleError(e);
     }
   }
 
   // Submit quiz answers
   Future<Map<String, dynamic>> submitQuizAnswers(
+    String level,
     Map<String, dynamic> answers,
   ) async {
     try {
-      final response = await _dio.post('/quizzes/submit', data: answers);
+      final response = await _dio.post('/quizzes/$level/submit', data: answers);
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -697,6 +712,45 @@ class ApiService {
   Future<Map<String, dynamic>> getUserStats() async {
     try {
       final response = await _dio.get('/user/stats');
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Get quiz statistics for user
+  Future<Map<String, dynamic>> getQuizStatistics() async {
+    try {
+      final response = await _dio.get('/scores/stats');
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Get leaderboard with level filter
+  Future<Map<String, dynamic>> getLeaderboardByLevel({
+    String? level,
+    int limit = 10,
+  }) async {
+    try {
+      Map<String, dynamic> queryParams = {'limit': limit};
+      if (level != null) queryParams['level'] = level;
+      
+      final response = await _dio.get(
+        '/scores/leaderboard',
+        queryParameters: queryParams,
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  // Get app statistics
+  Future<Map<String, dynamic>> getApplicationStats() async {
+    try {
+      final response = await _dio.get('/scores/app-stats');
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);

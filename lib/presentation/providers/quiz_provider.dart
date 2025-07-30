@@ -6,14 +6,18 @@ import '../../models/quiz_model.dart';
 import '../../models/score_model.dart';
 import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
+import '../../services/quiz_service.dart';
 
 enum QuizState { idle, loading, ready, inProgress, paused, completed, error }
 
 class QuizProvider extends ChangeNotifier {
   final ApiService _apiService;
   final StorageService _storageService;
+  late final QuizService _quizService;
 
-  QuizProvider(this._apiService, this._storageService);
+  QuizProvider(this._apiService, this._storageService) {
+    _quizService = QuizService(_apiService);
+  }
 
   // State variables
   QuizState _state = QuizState.idle;
@@ -127,67 +131,81 @@ class QuizProvider extends ChangeNotifier {
     String? categoryId,
     int limit = 10,
   }) async {
+    print('DEBUG: Loading quiz questions for level: $level');
+    
+    if (_isLoading) {
+      print('DEBUG: Already loading, skipping...');
+      return false;
+    }
+
     _setLoading(true);
     _clearError();
     _state = QuizState.loading;
     notifyListeners();
 
     try {
-      final response = await _apiService.getQuizzes(
-        level: level,
-        page: 1,
-        limit: limit,
-      );
-
-      if (response['success'] == true && response['data'] != null) {
-        // Handle different response structures
-        List<dynamic> questionsData;
-        if (response['data'] is List) {
-          questionsData = response['data'] as List;
-        } else if (response['data'] is Map && response['data']['data'] is List) {
-          questionsData = response['data']['data'] as List;
-        } else {
-          questionsData = [];
-        }
-        
-        _questions = questionsData
-            .map((item) => Quiz.fromJson(item))
-            .toList();
-        _selectedLevel = level;
-        _selectedCategoryId = categoryId;
-        _state = QuizState.ready;
-
-        // Cache questions
-        await _storageService.setString(
-          'quizzes_$level',
-          response['data'].toString(),
-        );
-
-        return true;
-      } else {
-        _setError(response['message'] ?? 'Gagal memuat soal kuis');
-        _state = QuizState.error;
-        return false;
+      // Check authentication status
+      final token = _storageService.getString('auth_token');
+      print('DEBUG: Auth token available: ${token != null ? 'YES' : 'NO'}');
+      if (token != null) {
+        print('DEBUG: Token length: ${token.length}');
       }
+      
+      print('DEBUG: Calling _quizService.getQuizzesByLevel($level)');
+      _questions = await _quizService.getQuizzesByLevel(level, limit: limit);
+      print('DEBUG: Received ${_questions.length} quizzes from service');
+      
+      _selectedLevel = level;
+      _selectedCategoryId = categoryId;
+      _state = QuizState.ready;
+      
+      print('DEBUG: Quiz state set to ready with ${_questions.length} questions');
+
+      // Cache questions
+      await _storageService.setString(
+        'quizzes_$level',
+        jsonEncode(_questions.map((q) => q.toJson()).toList()),
+      );
+      print('DEBUG: Questions cached successfully');
+
+      return true;
     } catch (e) {
+      print('DEBUG: Error loading quiz questions: $e');
       _setError('Gagal memuat soal kuis: ${e.toString()}');
       _state = QuizState.error;
 
       // Try to load from cache
+      print('DEBUG: Attempting to load from cache...');
       try {
         final cachedData = _storageService.getString('quizzes_$level');
+        print('DEBUG: Cached data retrieved: ${cachedData != null ? 'found' : 'not found'}');
+        
         if (cachedData != null) {
-          // Parse cached data if available
+          print('DEBUG: Processing cached data...');
+          final List<dynamic> cachedQuestions = jsonDecode(cachedData);
+          print('DEBUG: Decoded ${cachedQuestions.length} questions from cache');
+          
+          _questions = cachedQuestions.map((json) => Quiz.fromJson(json)).toList();
+          print('DEBUG: Converted to ${_questions.length} Quiz objects');
+          
+          _selectedLevel = level;
+          _selectedCategoryId = categoryId;
           _state = QuizState.ready;
+          _clearError();
+          
+          print('DEBUG: Successfully loaded ${_questions.length} questions from cache');
           return true;
+        } else {
+          print('DEBUG: No cached data available');
         }
       } catch (cacheError) {
-        debugPrint('Failed to load from cache: $cacheError');
+        print('DEBUG: Error loading from cache: $cacheError');
       }
 
       return false;
     } finally {
       _setLoading(false);
+      print('DEBUG: loadQuizQuestions completed. Final state: ${_state.toString()}, Questions: ${_questions.length}');
     }
   }
 
@@ -287,93 +305,58 @@ class QuizProvider extends ChangeNotifier {
     _stopTimer();
 
     try {
-      // Calculate score
-      int correctAnswers = 0;
-      for (int i = 0; i < _questions.length; i++) {
-        final userAnswer = _userAnswers[i];
-        if (userAnswer != null) {
-          final question = _questions[i];
-          final correctAnswer = question.jawabanBenar;
-          final options = [
-            question.pilihanA,
-            question.pilihanB,
-            question.pilihanC,
-            question.pilihanD,
-          ];
-          if (userAnswer < options.length &&
-              options[userAnswer] == correctAnswer) {
-            correctAnswers++;
-          }
-        }
-      }
+      // Calculate score using QuizService
+      final scoreData = _quizService.calculateScore(
+        questions: _questions,
+        userAnswers: _userAnswers,
+      );
 
-      final totalQuestions = _questions.length;
-      final score = (correctAnswers * 100) ~/ totalQuestions;
       final timeSpent = _timeLimit != null
           ? _timeLimit! - _remainingTime.inSeconds
           : 0;
 
-      // Prepare answers in the format expected by backend
-      List<Map<String, dynamic>> answers = [];
-      for (int i = 0; i < _questions.length; i++) {
-        final userAnswer = _userAnswers[i];
-        if (userAnswer != null) {
-          final question = _questions[i];
-          String answerLetter = '';
-          switch (userAnswer) {
-            case 0:
-              answerLetter = 'a';
-              break;
-            case 1:
-              answerLetter = 'b';
-              break;
-            case 2:
-              answerLetter = 'c';
-              break;
-            case 3:
-              answerLetter = 'd';
-              break;
-          }
-          answers.add({
-            'quiz_id': int.parse(question.id),
-            'jawaban': answerLetter,
-          });
-        }
-      }
+      // Format answers for backend submission
+      final formattedAnswers = _quizService.formatAnswersForSubmission(
+        questions: _questions,
+        userAnswers: _userAnswers,
+      );
 
-      final response = await _apiService.submitQuizAnswers({
-        'answers': answers,
-        'level': _selectedLevel,
-      });
+      final response = await _quizService.submitQuizAnswers(
+        level: _selectedLevel,
+        answers: formattedAnswers,
+        sessionId: _currentSessionId,
+        timeSpent: timeSpent,
+      );
 
-      if (response['success'] == true && response['data'] != null) {
-        final responseData = response['data'];
-        // Create score model from backend response
-        _lastQuizScore = ScoreModel(
-          id: responseData['score_id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
-          userId: 'current_user',
-          level: responseData['level'] ?? _selectedLevel,
-          skor: (responseData['score_percentage'] ?? 0).toDouble(),
-          totalSoal: responseData['total_questions'] ?? totalQuestions,
-          benar: responseData['correct_answers'] ?? correctAnswers,
-          salah: responseData['incorrect_answers'] ?? (totalQuestions - correctAnswers),
-          tanggal: DateTime.now(),
-          createdAt: DateTime.now(),
-        );
+      print('DEBUG: Submit quiz response: $response');
+      final responseData = response['data'];
+      print('DEBUG: Response data: $responseData');
+      print('DEBUG: Score data from calculation: $scoreData');
+      
+      // Create score model from backend response
+      _lastQuizScore = ScoreModel(
+        id: responseData['score_id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        userId: 'current_user',
+        level: responseData['level'] ?? _selectedLevel,
+        skor: (responseData['score_percentage'] ?? scoreData['score']).toInt(),
+        totalSoal: responseData['total_questions'] ?? scoreData['total_questions'],
+        benar: responseData['correct_answers'] ?? scoreData['correct_answers'],
+        salah: responseData['incorrect_answers'] ?? scoreData['incorrect_answers'],
+        tanggal: DateTime.now(),
+        createdAt: DateTime.now(),
+      );
+      
+      print('DEBUG: Created _lastQuizScore: ${_lastQuizScore?.toMap()}');
 
-        _state = QuizState.completed;
+      _state = QuizState.completed;
 
-        // Clear session
-        await _storageService.remove('current_quiz_session');
+      // Clear session
+      await _storageService.remove('current_quiz_session');
 
-        // Refresh user scores to include the new score
-        await loadUserScores(refresh: true);
+      // Refresh user scores to include the new score
+      await loadUserScores(refresh: true);
 
-        return true;
-      } else {
-        _setError(response['message'] ?? 'Gagal mengirim jawaban');
-        return false;
-      }
+      return true;
     } catch (e) {
       _setError('Gagal mengirim jawaban: ${e.toString()}');
       return false;
@@ -384,35 +367,13 @@ class QuizProvider extends ChangeNotifier {
 
   // Auto submit quiz when time is up
   Future<void> _autoSubmitQuiz() async {
-    // Prepare answers in the format expected by backend
-    List<Map<String, dynamic>> answers = [];
-    for (int i = 0; i < _questions.length; i++) {
-      final userAnswer = _userAnswers[i];
-      if (userAnswer != null) {
-        final question = _questions[i];
-        String answerLetter = '';
-        switch (userAnswer) {
-          case 0:
-            answerLetter = 'a';
-            break;
-          case 1:
-            answerLetter = 'b';
-            break;
-          case 2:
-            answerLetter = 'c';
-            break;
-          case 3:
-            answerLetter = 'd';
-            break;
-        }
-        answers.add({
-          'quiz_id': int.parse(question.id),
-          'jawaban': answerLetter,
-        });
-      }
-    }
+    // Format answers for backend submission using QuizService
+    final formattedAnswers = _quizService.formatAnswersForSubmission(
+      questions: _questions,
+      userAnswers: _userAnswers,
+    );
     
-    await submitQuiz(answers);
+    await submitQuiz(formattedAnswers);
   }
 
   // Pause quiz
@@ -465,45 +426,25 @@ class QuizProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      final response = await _apiService.getQuizHistory();
+      final scores = await _quizService.getUserScores(
+        page: _currentScorePage,
+        limit: _pageSize,
+        level: level,
+      );
 
-      if (response['success'] == true && response['data'] != null) {
-        // Handle different response structures
-        List<dynamic> scoresData;
-        if (response['data'] is List) {
-          scoresData = response['data'] as List;
-        } else if (response['data'] is Map && response['data']['data'] is List) {
-          scoresData = response['data']['data'] as List;
-        } else {
-          scoresData = [];
-        }
-        
-        final scores = scoresData
-            .map((item) => ScoreModel.fromMap(item))
-            .toList();
-
-        if (refresh) {
-          _userScores = scores;
-        } else {
-          _userScores.addAll(scores);
-        }
-
-        _hasMoreScores = scores.length == _pageSize;
-        _currentScorePage++;
-
-        // Cache scores
-        await _storageService.setQuizScores(
-          _userScores.map((score) => score.toMap()).toList(),
-        );
+      if (refresh) {
+        _userScores = scores;
       } else {
-        // Try to load from cache
-        final cachedScores = _storageService.getQuizScores();
-        if (cachedScores != null && refresh) {
-          _userScores = cachedScores
-              .map((item) => ScoreModel.fromMap(item))
-              .toList();
-        }
+        _userScores.addAll(scores);
       }
+
+      _hasMoreScores = scores.length == _pageSize;
+      _currentScorePage++;
+
+      // Cache scores
+      await _storageService.setQuizScores(
+        _userScores.map((score) => score.toMap()).toList(),
+      );
     } catch (e) {
       _setError('Gagal memuat riwayat skor: ${e.toString()}');
 
@@ -531,27 +472,14 @@ class QuizProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.getQuizHistory();
+      final scores = await _quizService.getUserScores(
+        page: _currentScorePage,
+        limit: _pageSize,
+      );
 
-      if (response['success'] == true && response['data'] != null) {
-        // Handle different response structures
-        List<dynamic> scoresData;
-        if (response['data'] is List) {
-          scoresData = response['data'] as List;
-        } else if (response['data'] is Map && response['data']['data'] is List) {
-          scoresData = response['data']['data'] as List;
-        } else {
-          scoresData = [];
-        }
-        
-        final scores = scoresData
-            .map((item) => ScoreModel.fromMap(item))
-            .toList();
-
-        _userScores.addAll(scores);
-        _hasMoreScores = scores.length == _pageSize;
-        _currentScorePage++;
-      }
+      _userScores.addAll(scores);
+      _hasMoreScores = scores.length == _pageSize;
+      _currentScorePage++;
     } catch (e) {
       _setError('Gagal memuat data tambahan: ${e.toString()}');
     } finally {
@@ -567,26 +495,10 @@ class QuizProvider extends ChangeNotifier {
     int limit = 50,
   }) async {
     try {
-      final response = await _apiService.getLeaderboard(
+      _leaderboard = await _quizService.getLeaderboard(
         level: level ?? 'all',
         limit: limit,
       );
-
-      if (response['success'] == true && response['data'] != null) {
-        // Handle different response structures
-        List<dynamic> leaderboardData;
-        if (response['data'] is List) {
-          leaderboardData = response['data'] as List;
-        } else if (response['data'] is Map && response['data']['data'] is List) {
-          leaderboardData = response['data']['data'] as List;
-        } else {
-          leaderboardData = [];
-        }
-        
-        _leaderboard = leaderboardData
-            .map((item) => ScoreModel.fromMap(item))
-            .toList();
-      }
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading leaderboard: $e');
@@ -594,15 +506,18 @@ class QuizProvider extends ChangeNotifier {
   }
 
   // Load quiz statistics
-  Future<void> loadStatistics() async {
+  Future<bool> loadStatistics() async {
+    _setLoading(true);
+    _clearError();
+
     try {
-      final response = await _apiService.getQuizStats();
-      if (response['success'] == true && response['data'] != null) {
-        _statistics = response['data'];
-      }
-      notifyListeners();
+      _statistics = await _quizService.getQuizStatistics();
+      return true;
     } catch (e) {
-      debugPrint('Error loading statistics: $e');
+      _setError('Gagal memuat statistik: ${e.toString()}');
+      return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
@@ -664,7 +579,11 @@ class QuizProvider extends ChangeNotifier {
 
   // Get quiz results
   Map<String, dynamic> getQuizResults() {
-    if (_lastQuizScore == null) return {};
+    print('DEBUG: getQuizResults called, _lastQuizScore: ${_lastQuizScore?.toMap()}');
+    if (_lastQuizScore == null) {
+      print('DEBUG: _lastQuizScore is null, returning empty map');
+      return {};
+    }
 
     final scoreModel = _lastQuizScore!;
     final salah = scoreModel.totalSoal - scoreModel.benar;

@@ -1,9 +1,9 @@
 class ApiConfig {
   // Base URL for the API
-  static const String baseUrl = 'https://815c13b82613.ngrok-free.app/api';
+  static const String baseUrl = 'https://538785daec69.ngrok-free.app/api';
 
   // Alternative base URL for development (using ngrok or similar)
-  static const String devBaseUrl = 'https://815c13b82613.ngrok-free.app/api';
+  static const String devBaseUrl = 'https://538785daec69.ngrok-free.app/api';
 
   // Current environment
   static const bool isDevelopment = true;
@@ -52,13 +52,18 @@ class ApiConfig {
   // Quizzes endpoints
   static const String quizzes = '/quizzes';
   static const String quizStart = '/quiz/start';
-  static const String quizSubmit = '/quiz/submit';
+  static const String quizSubmit = '/quizzes/submit';
   static const String quizResults = '/quiz/results';
+  static const String quizHistory = '/quizzes/history/user';
+  static const String quizStats = '/quizzes/stats/user';
 
   // Scores endpoints
   static const String scores = '/scores';
   static const String userScores = '/user/scores';
-  static const String leaderboard = '/leaderboard';
+  static const String leaderboard = '/scores/leaderboard';
+  static const String scoreStats = '/scores/stats';
+  static const String dashboardStats = '/scores/dashboard';
+  static const String appStats = '/scores/app-stats';
 
   // User endpoints
   static const String userProfile = '/user/profile';

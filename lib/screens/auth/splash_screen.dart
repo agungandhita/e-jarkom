@@ -103,8 +103,20 @@ class _SplashScreenState extends State<SplashScreen>
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
     try {
+      // Wait for AuthProvider to finish initialization
+      while (authProvider.state == AuthState.initial) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (!mounted) return;
+      }
+      
+      // Additional wait to ensure token is properly set
+      await Future.delayed(const Duration(milliseconds: 500));
+      
       // Check if user is already logged in
       final isLoggedIn = authProvider.isAuthenticated;
+      print('DEBUG SplashScreen: Auth status checked - isLoggedIn: $isLoggedIn');
+      print('DEBUG SplashScreen: Auth state: ${authProvider.state}');
+      print('DEBUG SplashScreen: Current user: ${authProvider.currentUser?.name ?? 'null'}');
 
       if (!mounted) return;
 
