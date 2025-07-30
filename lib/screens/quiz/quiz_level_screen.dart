@@ -199,43 +199,31 @@ class _QuizLevelScreenState extends State<QuizLevelScreen>
   }
 
   Widget _buildQuizLevelsGrid(ThemeData theme, QuizProvider quizProvider) {
-    // Mock quiz levels data
+    // Quiz levels sesuai dengan backend Laravel
     final quizLevels = [
       {
-        'id': '1',
-        'title': 'Dasar Jaringan',
-        'description': 'Konsep dasar jaringan komputer',
+        'level': 'mudah',
+        'title': 'Quiz Mudah',
+        'description': 'Soal-soal dasar jaringan komputer',
         'difficulty': 'Mudah',
-        'questionCount': 10,
-        'icon': Icons.network_wifi,
+        'icon': Icons.school,
         'color': Colors.green,
       },
       {
-        'id': '2',
-        'title': 'Protokol Jaringan',
-        'description': 'TCP/IP, HTTP, FTP dan protokol lainnya',
+        'level': 'sedang',
+        'title': 'Quiz Sedang',
+        'description': 'Soal-soal menengah jaringan komputer',
         'difficulty': 'Sedang',
-        'questionCount': 15,
-        'icon': Icons.router,
+        'icon': Icons.psychology,
         'color': Colors.orange,
       },
       {
-        'id': '3',
-        'title': 'Keamanan Jaringan',
-        'description': 'Firewall, VPN, dan keamanan jaringan',
+        'level': 'sulit',
+        'title': 'Quiz Sulit',
+        'description': 'Soal-soal lanjutan jaringan komputer',
         'difficulty': 'Sulit',
-        'questionCount': 20,
-        'icon': Icons.security,
+        'icon': Icons.emoji_events,
         'color': Colors.red,
-      },
-      {
-        'id': '4',
-        'title': 'Troubleshooting',
-        'description': 'Pemecahan masalah jaringan',
-        'difficulty': 'Sedang',
-        'questionCount': 12,
-        'icon': Icons.build,
-        'color': Colors.blue,
       },
     ];
 
@@ -263,7 +251,7 @@ class _QuizLevelScreenState extends State<QuizLevelScreen>
           context,
           MaterialPageRoute(
             builder: (context) =>
-                QuizScreen(quizId: level['id'], title: level['title']),
+                QuizScreen(level: level['level'], title: level['title']),
           ),
         );
       },
@@ -347,24 +335,6 @@ class _QuizLevelScreenState extends State<QuizLevelScreen>
 
               const Spacer(),
 
-              // Question Count
-              Row(
-                children: [
-                  Icon(
-                    Icons.quiz_outlined,
-                    size: 16,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
-                  ),
-                  SizedBox(width: AppConstants.spacingS),
-                  Text(
-                    '${level['questionCount']} Soal',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                  ),
-                ],
-              ),
-
               SizedBox(height: AppConstants.spacingS),
 
               // Start Button
@@ -376,7 +346,7 @@ class _QuizLevelScreenState extends State<QuizLevelScreen>
                       context,
                       MaterialPageRoute(
                         builder: (context) => QuizScreen(
-                          quizId: level['id'],
+                          level: level['level'],
                           title: level['title'],
                         ),
                       ),

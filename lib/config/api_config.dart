@@ -1,9 +1,9 @@
 class ApiConfig {
   // Base URL for the API
-  static const String baseUrl = 'https://12c84e0e281c.ngrok-free.app/api';
+  static const String baseUrl = 'https://815c13b82613.ngrok-free.app/api';
 
   // Alternative base URL for development (using ngrok or similar)
-  static const String devBaseUrl = 'https://12c84e0e281c.ngrok-free.app/api';
+  static const String devBaseUrl = 'https://815c13b82613.ngrok-free.app/api';
 
   // Current environment
   static const bool isDevelopment = true;

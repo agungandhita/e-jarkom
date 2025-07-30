@@ -2,6 +2,7 @@ class Quiz {
   final String id;
   final String soal;
   final Map<String, String> pilihan;
+  final String jawabanBenar;
   final String level;
   final DateTime createdAt;
 
@@ -9,6 +10,7 @@ class Quiz {
     required this.id,
     required this.soal,
     required this.pilihan,
+    required this.jawabanBenar,
     required this.level,
     required this.createdAt,
   });
@@ -38,6 +40,7 @@ class Quiz {
       id: json['id']?.toString() ?? '',
       soal: json['soal']?.toString() ?? '',
       pilihan: pilihanMap,
+      jawabanBenar: json['jawaban_benar']?.toString() ?? json['jawaban']?.toString() ?? '',
       level: json['level']?.toString() ?? '',
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
     );
@@ -48,6 +51,7 @@ class Quiz {
       'id': id,
       'soal': soal,
       'pilihan': pilihan,
+      'jawaban_benar': jawabanBenar,
       'level': level,
       'created_at': createdAt.toIso8601String(),
     };
@@ -76,6 +80,7 @@ class Quiz {
     String? id,
     String? soal,
     Map<String, String>? pilihan,
+    String? jawabanBenar,
     String? level,
     DateTime? createdAt,
   }) {
@@ -83,6 +88,7 @@ class Quiz {
       id: id ?? this.id,
       soal: soal ?? this.soal,
       pilihan: pilihan ?? this.pilihan,
+      jawabanBenar: jawabanBenar ?? this.jawabanBenar,
       level: level ?? this.level,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -102,5 +108,5 @@ class Quiz {
   @override
   int get hashCode => id.hashCode;
 
-  get jawabanBenar => null;
+
 }

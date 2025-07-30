@@ -140,7 +140,17 @@ class QuizProvider extends ChangeNotifier {
       );
 
       if (response['success'] == true && response['data'] != null) {
-        _questions = (response['data'] as List)
+        // Handle different response structures
+        List<dynamic> questionsData;
+        if (response['data'] is List) {
+          questionsData = response['data'] as List;
+        } else if (response['data'] is Map && response['data']['data'] is List) {
+          questionsData = response['data']['data'] as List;
+        } else {
+          questionsData = [];
+        }
+        
+        _questions = questionsData
             .map((item) => Quiz.fromJson(item))
             .toList();
         _selectedLevel = level;
@@ -269,7 +279,7 @@ class QuizProvider extends ChangeNotifier {
   }
 
   // Submit quiz answers
-  Future<bool> submitQuiz() async {
+  Future<bool> submitQuiz(List<Map<String, dynamic>> answers) async {
     if (_currentSessionId == null || _questions.isEmpty) return false;
 
     _setLoading(true);
@@ -303,24 +313,50 @@ class QuizProvider extends ChangeNotifier {
           ? _timeLimit! - _remainingTime.inSeconds
           : 0;
 
-      final response = await _apiService.submitQuiz(
-        level: _selectedLevel,
-        skor: score,
-        totalSoal: totalQuestions,
-        benar: correctAnswers,
-        timeSpent: timeSpent,
-      );
+      // Prepare answers in the format expected by backend
+      List<Map<String, dynamic>> answers = [];
+      for (int i = 0; i < _questions.length; i++) {
+        final userAnswer = _userAnswers[i];
+        if (userAnswer != null) {
+          final question = _questions[i];
+          String answerLetter = '';
+          switch (userAnswer) {
+            case 0:
+              answerLetter = 'a';
+              break;
+            case 1:
+              answerLetter = 'b';
+              break;
+            case 2:
+              answerLetter = 'c';
+              break;
+            case 3:
+              answerLetter = 'd';
+              break;
+          }
+          answers.add({
+            'quiz_id': int.parse(question.id),
+            'jawaban': answerLetter,
+          });
+        }
+      }
 
-      if (response['success'] == true) {
-        // Create score model
+      final response = await _apiService.submitQuizAnswers({
+        'answers': answers,
+        'level': _selectedLevel,
+      });
+
+      if (response['success'] == true && response['data'] != null) {
+        final responseData = response['data'];
+        // Create score model from backend response
         _lastQuizScore = ScoreModel(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          id: responseData['score_id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
           userId: 'current_user',
-          level: _selectedLevel,
-          skor: score,
-          totalSoal: totalQuestions,
-          benar: correctAnswers,
-          salah: totalQuestions - correctAnswers,
+          level: responseData['level'] ?? _selectedLevel,
+          skor: (responseData['score_percentage'] ?? 0).toDouble(),
+          totalSoal: responseData['total_questions'] ?? totalQuestions,
+          benar: responseData['correct_answers'] ?? correctAnswers,
+          salah: responseData['incorrect_answers'] ?? (totalQuestions - correctAnswers),
           tanggal: DateTime.now(),
           createdAt: DateTime.now(),
         );
@@ -344,6 +380,39 @@ class QuizProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  // Auto submit quiz when time is up
+  Future<void> _autoSubmitQuiz() async {
+    // Prepare answers in the format expected by backend
+    List<Map<String, dynamic>> answers = [];
+    for (int i = 0; i < _questions.length; i++) {
+      final userAnswer = _userAnswers[i];
+      if (userAnswer != null) {
+        final question = _questions[i];
+        String answerLetter = '';
+        switch (userAnswer) {
+          case 0:
+            answerLetter = 'a';
+            break;
+          case 1:
+            answerLetter = 'b';
+            break;
+          case 2:
+            answerLetter = 'c';
+            break;
+          case 3:
+            answerLetter = 'd';
+            break;
+        }
+        answers.add({
+          'quiz_id': int.parse(question.id),
+          'jawaban': answerLetter,
+        });
+      }
+    }
+    
+    await submitQuiz(answers);
   }
 
   // Pause quiz
@@ -396,14 +465,20 @@ class QuizProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      final response = await _apiService.getScores(
-        page: _currentScorePage,
-        limit: _pageSize,
-        level: level,
-      );
+      final response = await _apiService.getQuizHistory();
 
       if (response['success'] == true && response['data'] != null) {
-        final scores = (response['data'] as List)
+        // Handle different response structures
+        List<dynamic> scoresData;
+        if (response['data'] is List) {
+          scoresData = response['data'] as List;
+        } else if (response['data'] is Map && response['data']['data'] is List) {
+          scoresData = response['data']['data'] as List;
+        } else {
+          scoresData = [];
+        }
+        
+        final scores = scoresData
             .map((item) => ScoreModel.fromMap(item))
             .toList();
 
@@ -456,13 +531,20 @@ class QuizProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.getScores(
-        page: _currentScorePage,
-        limit: _pageSize,
-      );
+      final response = await _apiService.getQuizHistory();
 
       if (response['success'] == true && response['data'] != null) {
-        final scores = (response['data'] as List)
+        // Handle different response structures
+        List<dynamic> scoresData;
+        if (response['data'] is List) {
+          scoresData = response['data'] as List;
+        } else if (response['data'] is Map && response['data']['data'] is List) {
+          scoresData = response['data']['data'] as List;
+        } else {
+          scoresData = [];
+        }
+        
+        final scores = scoresData
             .map((item) => ScoreModel.fromMap(item))
             .toList();
 
@@ -491,7 +573,17 @@ class QuizProvider extends ChangeNotifier {
       );
 
       if (response['success'] == true && response['data'] != null) {
-        _leaderboard = (response['data'] as List)
+        // Handle different response structures
+        List<dynamic> leaderboardData;
+        if (response['data'] is List) {
+          leaderboardData = response['data'] as List;
+        } else if (response['data'] is Map && response['data']['data'] is List) {
+          leaderboardData = response['data']['data'] as List;
+        } else {
+          leaderboardData = [];
+        }
+        
+        _leaderboard = leaderboardData
             .map((item) => ScoreModel.fromMap(item))
             .toList();
       }
@@ -504,7 +596,7 @@ class QuizProvider extends ChangeNotifier {
   // Load quiz statistics
   Future<void> loadStatistics() async {
     try {
-      final response = await _apiService.getUserStats();
+      final response = await _apiService.getQuizStats();
       if (response['success'] == true && response['data'] != null) {
         _statistics = response['data'];
       }
@@ -543,7 +635,7 @@ class QuizProvider extends ChangeNotifier {
       } else {
         // Time's up - auto submit
         timer.cancel();
-        submitQuiz();
+        _autoSubmitQuiz();
       }
     });
   }

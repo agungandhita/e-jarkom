@@ -1,26 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
+import '../../presentation/providers/quiz_provider.dart';
 import 'quiz_level_screen.dart';
 
 class QuizResultScreen extends StatefulWidget {
-  final String quizTitle;
-  final int totalSoal;
-  final int benar;
-  final Map<int, String> selectedAnswers;
-  final List<Map<String, dynamic>> questions;
-
-  const QuizResultScreen({
-    Key? key,
-    required this.quizTitle,
-    required this.totalSoal,
-    required this.benar,
-    required this.selectedAnswers,
-    required this.questions,
-  }) : super(key: key);
-
-  // Compatibility getters
-  int get totalQuestions => totalSoal;
-  int get correctAnswers => benar;
+  const QuizResultScreen({Key? key}) : super(key: key);
 
   @override
   State<QuizResultScreen> createState() => _QuizResultScreenState();
@@ -54,29 +39,18 @@ class _QuizResultScreenState extends State<QuizResultScreen>
 
     _slideAnimation =
         Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeOutCubic,
-          ),
-        );
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
+    );
 
-    _scoreAnimation =
-        Tween<double>(
-          begin: 0.0,
-          end: widget.correctAnswers / widget.totalQuestions,
-        ).animate(
-          CurvedAnimation(
-            parent: _scoreAnimationController,
-            curve: Curves.easeOutCubic,
-          ),
-        );
+    _scoreAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _scoreAnimationController,
+        curve: Curves.elasticOut,
+      ),
+    );
 
     _animationController.forward();
-
-    // Delay score animation
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _scoreAnimationController.forward();
-    });
+    _scoreAnimationController.forward();
   }
 
   @override
@@ -86,211 +60,287 @@ class _QuizResultScreenState extends State<QuizResultScreen>
     super.dispose();
   }
 
-  double get scorePercentage =>
-      (widget.correctAnswers / widget.totalQuestions) * 100;
-
-  String get gradeText {
-    if (scorePercentage >= 90) return 'Excellent!';
-    if (scorePercentage >= 80) return 'Great!';
-    if (scorePercentage >= 70) return 'Good!';
-    if (scorePercentage >= 60) return 'Fair';
-    return 'Need Improvement';
+  String _getGradeText(double percentage) {
+    if (percentage >= 90) return 'Excellent!';
+    if (percentage >= 80) return 'Great!';
+    if (percentage >= 70) return 'Good!';
+    if (percentage >= 60) return 'Fair';
+    return 'Keep Trying!';
   }
 
-  Color get gradeColor {
-    if (scorePercentage >= 90) return Colors.green;
-    if (scorePercentage >= 80) return Colors.lightGreen;
-    if (scorePercentage >= 70) return Colors.orange;
-    if (scorePercentage >= 60) return Colors.deepOrange;
+  Color _getGradeColor(double percentage, ThemeData theme) {
+    if (percentage >= 90) return Colors.green;
+    if (percentage >= 80) return Colors.blue;
+    if (percentage >= 70) return Colors.orange;
+    if (percentage >= 60) return Colors.amber;
     return Colors.red;
+  }
+
+  IconData _getGradeIcon(double percentage) {
+    if (percentage >= 90) return Icons.emoji_events;
+    if (percentage >= 80) return Icons.star;
+    if (percentage >= 70) return Icons.thumb_up;
+    if (percentage >= 60) return Icons.sentiment_satisfied;
+    return Icons.sentiment_dissatisfied;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('Hasil Quiz'),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        elevation: 0,
-      ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppConstants.spacingL),
-            child: Column(
-              children: [
-                // Score Card
-                _buildScoreCard(theme),
-
-                SizedBox(height: AppConstants.spacingXL),
-
-                // Statistics
-                _buildStatistics(theme),
-
-                SizedBox(height: AppConstants.spacingXL),
-
-                // Review Answers
-                _buildReviewSection(theme),
-
-                SizedBox(height: AppConstants.spacingXL),
-
-                // Action Buttons
-                _buildActionButtons(theme),
-              ],
+    
+    return Consumer<QuizProvider>(
+      builder: (context, quizProvider, child) {
+        final results = quizProvider.getQuizResults();
+        
+        if (results.isEmpty) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Hasil Quiz'),
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: Colors.white,
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildScoreCard(ThemeData theme) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppConstants.spacingXL),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [gradeColor, gradeColor.withOpacity(0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppConstants.borderRadiusXL),
-        boxShadow: [
-          BoxShadow(
-            color: gradeColor.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Trophy Icon
-          Container(
-            padding: const EdgeInsets.all(AppConstants.spacingL),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(50),
+            body: const Center(
+              child: Text('Tidak ada hasil quiz tersedia'),
             ),
-            child: Icon(
-              scorePercentage >= 70
-                  ? Icons.emoji_events
-                  : Icons.sentiment_neutral,
-              size: 48,
-              color: Colors.white,
-            ),
+          );
+        }
+
+        final percentage = results['percentage'] ?? 0;
+        final gradeText = _getGradeText(percentage.toDouble());
+        final gradeColor = _getGradeColor(percentage.toDouble(), theme);
+        final gradeIcon = _getGradeIcon(percentage);
+
+        return Scaffold(
+          backgroundColor: theme.colorScheme.surface,
+          appBar: AppBar(
+            title: const Text('Hasil Quiz'),
+            backgroundColor: theme.colorScheme.primary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            automaticallyImplyLeading: false,
           ),
+          body: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppConstants.spacingL),
+                child: Column(
+                  children: [
+                    // Score Card
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppConstants.spacingXL),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            gradeColor.withOpacity(0.1),
+                            gradeColor.withOpacity(0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(AppConstants.borderRadiusXL),
+                        border: Border.all(
+                          color: gradeColor.withOpacity(0.3),
+                          width: 2,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          // Grade Icon
+                          ScaleTransition(
+                            scale: _scoreAnimation,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: gradeColor,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: gradeColor.withOpacity(0.3),
+                                    blurRadius: 20,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                gradeIcon,
+                                color: Colors.white,
+                                size: 40,
+                              ),
+                            ),
+                          ),
 
-          SizedBox(height: AppConstants.spacingL),
+                          SizedBox(height: AppConstants.spacingL),
 
-          // Grade Text
-          Text(
-            gradeText,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+                          // Grade Text
+                          Text(
+                            gradeText,
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              color: gradeColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
 
-          SizedBox(height: AppConstants.spacingM),
+                          SizedBox(height: AppConstants.spacingM),
 
-          // Score Circle
-          AnimatedBuilder(
-            animation: _scoreAnimation,
-            builder: (context, child) {
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 120,
-                    height: 120,
-                    child: CircularProgressIndicator(
-                      value: _scoreAnimation.value,
-                      strokeWidth: 8,
-                      backgroundColor: Colors.white.withOpacity(0.3),
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                        Colors.white,
+                          // Score Percentage
+                          AnimatedBuilder(
+                            animation: _scoreAnimation,
+                            builder: (context, child) {
+                              return Text(
+                                '${(percentage * _scoreAnimation.value).toInt()}%',
+                                style: theme.textTheme.displayMedium?.copyWith(
+                                  color: gradeColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            },
+                          ),
+
+                          SizedBox(height: AppConstants.spacingS),
+
+                          Text(
+                            'Skor Anda',
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  Column(
-                    children: [
-                      Text(
-                        '${(_scoreAnimation.value * 100).round()}%',
-                        style: theme.textTheme.headlineLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Score',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
 
-          SizedBox(height: AppConstants.spacingL),
+                    SizedBox(height: AppConstants.spacingXL),
 
-          // Quiz Title
-          Text(
-            widget.quizTitle,
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+                    // Statistics Cards
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            theme,
+                            'Total Soal',
+                            results['total_soal'].toString(),
+                            Icons.quiz,
+                            Colors.blue,
+                          ),
+                        ),
+                        SizedBox(width: AppConstants.spacingM),
+                        Expanded(
+                          child: _buildStatCard(
+                            theme,
+                            'Benar',
+                            results['benar'].toString(),
+                            Icons.check_circle,
+                            Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    SizedBox(height: AppConstants.spacingM),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            theme,
+                            'Salah',
+                            results['salah'].toString(),
+                            Icons.cancel,
+                            Colors.red,
+                          ),
+                        ),
+                        SizedBox(width: AppConstants.spacingM),
+                        Expanded(
+                          child: _buildStatCard(
+                            theme,
+                            'Level',
+                            results['level'].toString().toUpperCase(),
+                            Icons.trending_up,
+                            Colors.purple,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    SizedBox(height: AppConstants.spacingXL),
+
+                    // Action Buttons
+                    Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const QuizLevelScreen(),
+                                ),
+                                (route) => false,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: AppConstants.spacingL,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppConstants.borderRadiusM,
+                                ),
+                              ),
+                            ),
+                            child: const Text(
+                              'Coba Quiz Lain',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(height: AppConstants.spacingM),
+
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              Navigator.pop(context);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: AppConstants.spacingL,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AppConstants.borderRadiusM,
+                                ),
+                              ),
+                            ),
+                            child: const Text(
+                              'Kembali ke Dashboard',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
-            textAlign: TextAlign.center,
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatistics(ThemeData theme) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            theme,
-            'Benar',
-            widget.correctAnswers.toString(),
-            Icons.check_circle,
-            Colors.green,
-          ),
-        ),
-        SizedBox(width: AppConstants.spacingM),
-        Expanded(
-          child: _buildStatCard(
-            theme,
-            'Salah',
-            (widget.totalQuestions - widget.correctAnswers).toString(),
-            Icons.cancel,
-            Colors.red,
-          ),
-        ),
-        SizedBox(width: AppConstants.spacingM),
-        Expanded(
-          child: _buildStatCard(
-            theme,
-            'Total',
-            widget.totalQuestions.toString(),
-            Icons.quiz,
-            theme.colorScheme.primary,
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -304,205 +354,49 @@ class _QuizResultScreenState extends State<QuizResultScreen>
     return Container(
       padding: const EdgeInsets.all(AppConstants.spacingL),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(AppConstants.borderRadiusL),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: const Offset(0, 5),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 32),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 20,
+            ),
+          ),
           SizedBox(height: AppConstants.spacingS),
           Text(
             value,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              color: color,
+            style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
+              color: color,
             ),
           ),
+          SizedBox(height: AppConstants.spacingS),
           Text(
             title,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withOpacity(0.7),
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildReviewSection(ThemeData theme) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppConstants.spacingL),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppConstants.borderRadiusL),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.rate_review, color: theme.colorScheme.primary),
-              SizedBox(width: AppConstants.spacingS),
-              Text(
-                'Review Jawaban',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: AppConstants.spacingL),
-
-          ...List.generate(
-            widget.questions.length,
-            (index) => _buildReviewItem(theme, index),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReviewItem(ThemeData theme, int index) {
-    final question = widget.questions[index];
-    final selectedAnswer = widget.selectedAnswers[index];
-    final correctAnswer = question['correctAnswer'];
-    final isCorrect = selectedAnswer == correctAnswer;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppConstants.spacingM),
-      padding: const EdgeInsets.all(AppConstants.spacingM),
-      decoration: BoxDecoration(
-        color: isCorrect
-            ? Colors.green.withOpacity(0.1)
-            : Colors.red.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(AppConstants.borderRadiusM),
-        border: Border.all(
-          color: isCorrect ? Colors.green : Colors.red,
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                isCorrect ? Icons.check_circle : Icons.cancel,
-                color: isCorrect ? Colors.green : Colors.red,
-                size: 20,
-              ),
-              SizedBox(width: AppConstants.spacingS),
-              Expanded(
-                child: Text(
-                  'Soal ${index + 1}',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: isCorrect ? Colors.green : Colors.red,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          SizedBox(height: AppConstants.spacingS),
-
-          Text(question['question'], style: theme.textTheme.bodyMedium),
-
-          SizedBox(height: AppConstants.spacingS),
-
-          if (selectedAnswer != null) ...[
-            Text(
-              'Jawaban Anda: $selectedAnswer',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: isCorrect ? Colors.green : Colors.red,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-
-          if (!isCorrect) ...[
-            Text(
-              'Jawaban Benar: $correctAnswer',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.green,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons(ThemeData theme) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const QuizLevelScreen(),
-                ),
-                (route) => route.isFirst,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                vertical: AppConstants.spacingL,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppConstants.borderRadiusM),
-              ),
-            ),
-            child: const Text(
-              'Kembali ke Quiz',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-            ),
-          ),
-        ),
-
-        SizedBox(height: AppConstants.spacingM),
-
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            onPressed: () {
-              Navigator.popUntil(context, (route) => route.isFirst);
-            },
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                vertical: AppConstants.spacingL,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppConstants.borderRadiusM),
-              ),
-            ),
-            child: const Text(
-              'Kembali ke Beranda',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
-
-// Type alias for backward compatibility
-typedef QuizResultPage = QuizResultScreen;
