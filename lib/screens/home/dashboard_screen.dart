@@ -32,6 +32,20 @@ class _DashboardScreenState extends State<DashboardScreen>
     super.initState();
     _initializeAnimations();
     _loadDashboardData();
+    
+    // Listen to auth state changes to reload data when user logs in
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = context.read<AuthProvider>();
+      authProvider.addListener(_onAuthStateChanged);
+    });
+  }
+  
+  void _onAuthStateChanged() {
+    final authProvider = context.read<AuthProvider>();
+    if (authProvider.isAuthenticated && authProvider.user != null) {
+      debugPrint('DashboardScreen: User logged in, reloading dashboard data');
+      _loadDashboardData();
+    }
   }
 
   void _initializeAnimations() {
@@ -59,27 +73,45 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Future<void> _loadDashboardData() async {
+    final authProvider = context.read<AuthProvider>();
     final toolProvider = context.read<ToolProvider>();
     final quizProvider = context.read<QuizProvider>();
     final videoProvider = context.read<VideoProvider>();
     final dashboardProvider = context.read<DashboardProvider>();
 
-    await Future.wait(
-      [
-            quizProvider.loadQuizLevel(),
-            quizProvider.loadUserScores(
-              refresh: true,
-            ), // Load user-specific quiz scores
-            // videoProvider.loadFeaturedVideos(),
-            dashboardProvider.loadDashboardStats(),
-          ]
-          as Iterable<Future>,
-    );
+    // Only load user-specific data if user is logged in
+    if (authProvider.isAuthenticated && authProvider.user != null) {
+      await Future.wait(
+        [
+              quizProvider.loadQuizLevel(),
+              quizProvider.loadUserScores(
+                refresh: true,
+              ), // Load user-specific quiz scores
+              // videoProvider.loadFeaturedVideos(),
+              dashboardProvider.loadDashboardStats(),
+            ]
+            as Iterable<Future>,
+      );
+    } else {
+      // If user is not logged in, only load basic data
+      await quizProvider.loadQuizLevel();
+      debugPrint('DashboardScreen: User not logged in, skipping user-specific data loading');
+    }
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    
+    // Remove auth state listener
+    try {
+      final authProvider = context.read<AuthProvider>();
+      authProvider.removeListener(_onAuthStateChanged);
+    } catch (e) {
+      // Ignore errors if context is no longer available
+      debugPrint('DashboardScreen: Error removing auth listener: $e');
+    }
+    
     super.dispose();
   }
 
@@ -110,13 +142,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Welcome Section
-                              _buildWelcomeSection(theme, user),
-
-                              const SizedBox(height: AppConstants.spacingLarge),
-
                               // Statistics Cards
-                              _buildStatisticsSection(theme),
+                              _buildStatisticsSection(),
 
                               const SizedBox(height: AppConstants.spacingLarge),
 
@@ -246,161 +273,93 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildWelcomeSection(ThemeData theme, User? user) {
-    // Menggunakan zona waktu Indonesia (WIB)
-    final now = DateTime.now().toUtc().add(const Duration(hours: 7));
-    final hour = now.hour;
-    String greeting;
 
-    if (hour < 12) {
-      greeting = 'Selamat Pagi';
-    } else if (hour < 15) {
-      greeting = 'Selamat Siang';
-    } else if (hour < 18) {
-      greeting = 'Selamat Sore';
-    } else {
-      greeting = 'Selamat Malam';
-    }
 
-    return Container(
-      padding: const EdgeInsets.all(AppConstants.spacingLarge),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primary.withOpacity(0.1),
-            theme.colorScheme.primary.withOpacity(0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          // User Avatar
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
-            backgroundImage: user?.foto != null
-                ? NetworkImage(user!.foto!)
-                : null,
-            child: user?.foto == null
-                ? Text(
-                    user?.initials ?? 'U',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                : null,
-          ),
-
-          const SizedBox(width: AppConstants.spacingMedium),
-
-          // Welcome Text
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$greeting,',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
-                  ),
-                ),
-                Text(
-                  user?.name ?? 'Pengguna',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                if (user?.kelas != null)
-                  Text(
-                    user!.kelas!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.bodyMedium?.color?.withOpacity(
-                        0.6,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatisticsSection(ThemeData theme) {
-    return Consumer4<
-      ToolProvider,
-      QuizProvider,
-      VideoProvider,
-      DashboardProvider
-    >(
-      builder: (context, toolProvider, quizProvider, videoProvider, dashboardProvider, child) {
+  Widget _buildStatisticsSection() {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        final theme = Theme.of(context);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Statistik Pembelajaran',
+              'Selamat Datang!',
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: AppConstants.spacingMedium),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    theme,
-                    'Total Alat',
-                    '${dashboardProvider.userStatistics?.totalToolsViewed ?? 0}',
-                    Icons.build,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppConstants.spacingLarge),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
                     theme.colorScheme.primary,
-                  ),
+                    theme.colorScheme.primary.withOpacity(0.7),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                const SizedBox(width: AppConstants.spacingMedium),
-                Expanded(
-                  child: _buildStatCard(
-                    theme,
-                    'Quiz Selesai',
-                    '${dashboardProvider.userStatistics?.totalQuizTaken ?? 0}',
-                    Icons.quiz,
-                    Colors.green,
+                borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.school,
+                        size: 32,
+                        color: theme.colorScheme.onPrimary,
+                      ),
+                      const SizedBox(width: AppConstants.spacingMedium),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              authProvider.isAuthenticated && authProvider.user != null
+                                  ? 'Halo, ${authProvider.user!.name}!'
+                                  : 'Halo, Pelajar!',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: theme.colorScheme.onPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: AppConstants.spacingSmall),
+                            Text(
+                              authProvider.isAuthenticated
+                                  ? 'Siap untuk melanjutkan pembelajaran hari ini?'
+                                  : 'Mari mulai perjalanan belajar Anda!',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onPrimary.withOpacity(0.9),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: AppConstants.spacingMedium),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    theme,
-                    'Rata-rata Skor',
-                    '${dashboardProvider.userStatistics?.averageScore.toStringAsFixed(1) ?? '0.0'}%',
-                    Icons.trending_up,
-                    Colors.orange,
-                  ),
-                ),
-                const SizedBox(width: AppConstants.spacingMedium),
-                Expanded(
-                  child: _buildStatCard(
-                    theme,
-                    'Video Ditonton',
-                    '${dashboardProvider.userStatistics?.totalVideosWatched ?? 0}',
-                    Icons.play_circle,
-                    Colors.blue,
-                  ),
-                ),
-              ],
+                  if (!authProvider.isAuthenticated) ...[
+                    const SizedBox(height: AppConstants.spacingMedium),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/login');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.onPrimary,
+                        foregroundColor: theme.colorScheme.primary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppConstants.spacingLarge,
+                          vertical: AppConstants.spacingMedium,
+                        ),
+                      ),
+                      child: const Text('Masuk Sekarang'),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
         );
@@ -408,66 +367,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildStatCard(
-    ThemeData theme,
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(AppConstants.spacingMedium),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(
-                    AppConstants.borderRadiusSmall,
-                  ),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const Spacer(),
-              Icon(Icons.trending_up, color: color, size: 16),
-            ],
-          ),
 
-          const SizedBox(height: AppConstants.spacingMedium),
-
-          Text(
-            value,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-
-          Text(
-            title,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildQuickActionsSection(BuildContext context, ThemeData theme) {
     final quickActions = [
@@ -532,7 +432,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             crossAxisCount: 2,
             crossAxisSpacing: AppConstants.spacingMedium,
             mainAxisSpacing: AppConstants.spacingMedium,
-            childAspectRatio: 1.5,
+            childAspectRatio: 1.3,
           ),
           itemCount: quickActions.length,
           itemBuilder: (context, index) {
@@ -548,7 +448,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     return GestureDetector(
       onTap: action['onTap'],
       child: Container(
-        padding: const EdgeInsets.all(AppConstants.spacingMedium),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium),
@@ -562,34 +462,46 @@ class _DashboardScreenState extends State<DashboardScreen>
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: (action['color'] as Color).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(
                   AppConstants.borderRadiusSmall,
                 ),
               ),
-              child: Icon(action['icon'], color: action['color'], size: 24),
+              child: Icon(action['icon'], color: action['color'], size: 20),
             ),
 
-            const Spacer(),
+            const SizedBox(height: 8),
 
-            Text(
-              action['title'],
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    action['title'],
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
 
-            Text(
-              action['subtitle'],
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                  const SizedBox(height: 2),
+
+                  Text(
+                    action['subtitle'],
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -943,7 +855,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             const SizedBox(height: AppConstants.spacingMedium),
 
             SizedBox(
-              height: 200,
+              height: 220,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: featuredVideos.length,
@@ -1098,67 +1010,63 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
 
             // Video Info
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(AppConstants.spacingSmall),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      video.judul,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+            Container(
+              height: 88,
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    video.judul,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
 
-                    const SizedBox(height: AppConstants.spacingSmall),
+                  const SizedBox(height: 4),
 
-                    Text(
-                      video.deskripsi.length > 50
-                          ? '${video.deskripsi.substring(0, 50)}...'
-                          : video.deskripsi,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodyMedium?.color?.withOpacity(
-                          0.7,
-                        ),
+                  Text(
+                    video.deskripsi.length > 40
+                        ? '${video.deskripsi.substring(0, 40)}...'
+                        : video.deskripsi,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                        0.7,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
 
-                    const Spacer(),
+                  const Spacer(),
 
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today,
-                          size: 16,
-                          color: theme.textTheme.bodyMedium?.color?.withOpacity(
-                            0.6,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          video.createdAt?.toString().split(' ')[0] ?? '',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.textTheme.bodyMedium?.color
-                                ?.withOpacity(0.6),
-                          ),
-                        ),
-                        const Spacer(),
-                        Icon(
-                          Icons.play_circle_outline,
-                          size: 16,
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.play_circle_outline,
+                        size: 14,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Video',
+                        style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.primary,
                         ),
-                        const SizedBox(width: 4),
-                        Text('Video', style: theme.textTheme.bodySmall),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        video.createdAt?.toString().split(' ')[0] ?? '',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.textTheme.bodyMedium?.color
+                              ?.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],

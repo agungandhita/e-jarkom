@@ -218,10 +218,10 @@ class _RegisterScreenState extends State<RegisterScreen>
                           children: [
                             // Logo
                             Container(
-                              width: 80,
-                              height: 80,
+                              width: 100,
+                              height: 100,
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primary,
+                                color: Colors.white,
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
@@ -232,10 +232,20 @@ class _RegisterScreenState extends State<RegisterScreen>
                                   ),
                                 ],
                               ),
-                              child: Icon(
-                                Icons.person_add,
-                                size: 40,
-                                color: Colors.white,
+                              child: ClipOval(
+                                child: Image.asset(
+                                  'assets/images/logo.png',
+                                  width: 100,
+                                  height: 100,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      Icons.person_add,
+                                      size: 40,
+                                      color: theme.colorScheme.primary,
+                                    );
+                                  },
+                                ),
                               ),
                             ),
 

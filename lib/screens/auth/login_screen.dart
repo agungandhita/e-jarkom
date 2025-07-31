@@ -213,10 +213,10 @@ class _LoginScreenState extends State<LoginScreen>
                               children: [
                                 // Logo
                                 Container(
-                                  width: 100,
-                                  height: 100,
+                                  width: 120,
+                                  height: 120,
                                   decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary,
+                                    color: Colors.white,
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
@@ -227,10 +227,20 @@ class _LoginScreenState extends State<LoginScreen>
                                       ),
                                     ],
                                   ),
-                                  child: Icon(
-                                    Icons.build_circle,
-                                    size: 60,
-                                    color: Colors.white,
+                                  child: ClipOval(
+                                    child: Image.asset(
+                                      'assets/images/logo.png',
+                                      width: 120,
+                                      height: 120,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Icon(
+                                          Icons.build_circle,
+                                          size: 60,
+                                          color: theme.colorScheme.primary,
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
 

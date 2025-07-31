@@ -21,19 +21,28 @@ class DashboardProvider with ChangeNotifier {
     notifyListeners();
     
     try {
+      debugPrint('DashboardProvider: Starting to load dashboard stats...');
       final response = await _apiService.getDashboardStats();
+      
+      debugPrint('DashboardProvider: API Response: $response');
+      debugPrint('DashboardProvider: Response success: ${response['success']}');
+      debugPrint('DashboardProvider: Response data: ${response['data']}');
       
       if (response['success'] == true && response['data'] != null) {
         _userStatistics = UserStatistics.fromJson(response['data']);
+        debugPrint('DashboardProvider: Successfully parsed UserStatistics: $_userStatistics');
       } else {
         _errorMessage = response['message'] ?? 'Gagal memuat statistik';
+        debugPrint('DashboardProvider: API returned error: $_errorMessage');
       }
     } catch (e) {
       _errorMessage = 'Terjadi kesalahan: ${e.toString()}';
-      debugPrint('Error loading dashboard stats: $e');
+      debugPrint('DashboardProvider: Exception occurred: $e');
+      debugPrint('DashboardProvider: Exception type: ${e.runtimeType}');
     } finally {
       _isLoading = false;
       notifyListeners();
+      debugPrint('DashboardProvider: Loading completed. Statistics: $_userStatistics');
     }
   }
   

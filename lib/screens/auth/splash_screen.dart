@@ -225,11 +225,19 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                               ],
                             ),
-                            child: Center(
-                              child: Icon(
-                                Icons.build_circle,
-                                size: size.width * 0.25,
-                                color: theme.colorScheme.primary,
+                            child: ClipOval(
+                              child: Image.asset(
+                                'assets/images/logo.png',
+                                width: size.width * 0.25,
+                                height: size.width * 0.25,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.build_circle,
+                                    size: size.width * 0.25,
+                                    color: theme.colorScheme.primary,
+                                  );
+                                },
                               ),
                             ),
                           ),

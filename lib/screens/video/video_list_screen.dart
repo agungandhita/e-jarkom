@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../presentation/providers/video_provider.dart';
+import '../../presentation/providers/auth_provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../domain/entities/video.dart';
 import 'video_player_screen.dart';
@@ -111,65 +112,118 @@ class _VideoListScreenState extends State<VideoListScreen>
   }
 
   Widget _buildHeaderSection(ThemeData theme) {
-    return Container(
-      margin: const EdgeInsets.all(AppConstants.spacingL),
-      padding: const EdgeInsets.all(AppConstants.spacingL),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primary,
-            theme.colorScheme.primary.withOpacity(0.8),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppConstants.borderRadiusL),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppConstants.spacingM),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(AppConstants.borderRadiusM),
-            ),
-            child: const Icon(
-              Icons.play_circle_filled,
-              color: Colors.white,
-              size: 32,
-            ),
-          ),
-          SizedBox(width: AppConstants.spacingM),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Video Pembelajaran',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: AppConstants.spacingS),
-                Text(
-                  'Pelajari jaringan komputer melalui video interaktif',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        final user = authProvider.currentUser;
+        
+        return Container(
+          margin: const EdgeInsets.all(AppConstants.spacingL),
+          padding: const EdgeInsets.all(AppConstants.spacingL),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                theme.colorScheme.primary,
+                theme.colorScheme.primary.withOpacity(0.8),
               ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusL),
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.primary.withOpacity(0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-        ],
-      ),
+          child: Column(
+            children: [
+              // User greeting row
+              if (user != null)
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      child: Text(
+                        user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppConstants.spacingM),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Halo, ${user.name}!',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Kelas ${user.kelas}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              
+              if (user != null) const SizedBox(height: AppConstants.spacingM),
+              
+              // Main content row
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppConstants.spacingM),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(AppConstants.borderRadiusM),
+                    ),
+                    child: const Icon(
+                      Icons.play_circle_filled,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: AppConstants.spacingM),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Video Pembelajaran',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: AppConstants.spacingS),
+                        Text(
+                          'Pelajari jaringan komputer melalui video interaktif',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -193,6 +247,8 @@ class _VideoListScreenState extends State<VideoListScreen>
                 setState(() {
                   selectedCategory = category;
                 });
+                // Apply filter when category changes
+                _applyFilters();
               },
               backgroundColor: theme.colorScheme.surface,
               selectedColor: theme.colorScheme.primary.withOpacity(0.2),
@@ -222,9 +278,11 @@ class _VideoListScreenState extends State<VideoListScreen>
           return const Center(child: CircularProgressIndicator());
         }
 
-        final videos = videoProvider.videos;
+        // Apply category filter
+        final allVideos = videoProvider.videos;
+        final filteredVideos = _getFilteredVideos(allVideos);
 
-        if (videos.isEmpty) {
+        if (filteredVideos.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -243,23 +301,56 @@ class _VideoListScreenState extends State<VideoListScreen>
                 ),
                 SizedBox(height: AppConstants.spacingS),
                 Text(
-                  'Video untuk kategori ini belum tersedia',
+                  selectedCategory == 'Semua' 
+                    ? 'Belum ada video yang tersedia'
+                    : 'Video untuk kategori "$selectedCategory" belum tersedia',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withOpacity(0.5),
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(AppConstants.spacingL),
-          itemCount: videos.length,
-          itemBuilder: (context, index) {
-            final video = videos[index];
-            return _buildVideoCard(theme, video);
+        return RefreshIndicator(
+          onRefresh: () async {
+            await context.read<VideoProvider>().refresh();
           },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(AppConstants.spacingL),
+            itemCount: filteredVideos.length + (videoProvider.hasMoreData ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == filteredVideos.length) {
+                // Load more indicator
+                if (videoProvider.isLoadingMore) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(AppConstants.spacingM),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                } else {
+                  // Load more button
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppConstants.spacingM),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          context.read<VideoProvider>().loadMoreVideos();
+                        },
+                        child: const Text('Muat Lebih Banyak'),
+                      ),
+                    ),
+                  );
+                }
+              }
+              
+              final video = filteredVideos[index];
+              return _buildVideoCard(theme, video);
+            },
+          ),
         );
       },
     );
@@ -376,13 +467,24 @@ class _VideoListScreenState extends State<VideoListScreen>
                         AppConstants.borderRadiusS,
                       ),
                     ),
-                    child: Text(
-                      'Video',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Video',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -403,7 +505,7 @@ class _VideoListScreenState extends State<VideoListScreen>
                       ),
                     ),
                     child: Text(
-                      'Video',
+                      _getCategoryFromTitle(video.judul),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -484,16 +586,84 @@ class _VideoListScreenState extends State<VideoListScreen>
     );
   }
 
+  // Apply category filter to videos
+  void _applyFilters() {
+    setState(() {
+      // This will trigger a rebuild and apply the filter in _getFilteredVideos
+    });
+  }
+
+  // Get filtered videos based on selected category
+  List<Video> _getFilteredVideos(List<Video> videos) {
+    if (selectedCategory == 'Semua') {
+      return videos;
+    }
+    
+    // Filter videos based on category
+    // Note: This assumes the Video model has a category field or similar
+    // You may need to adjust this based on your actual Video model structure
+    return videos.where((video) {
+      // For now, we'll use a simple title/description matching
+      // You should replace this with proper category field matching
+      final searchTerm = selectedCategory.toLowerCase();
+      final title = video.judul.toLowerCase();
+      final description = video.deskripsi.toLowerCase();
+      
+      switch (selectedCategory) {
+        case 'Dasar Jaringan':
+          return title.contains('dasar') || title.contains('basic') || 
+                 description.contains('dasar') || description.contains('basic');
+        case 'Protokol':
+          return title.contains('protokol') || title.contains('protocol') ||
+                 description.contains('protokol') || description.contains('protocol');
+        case 'Keamanan':
+          return title.contains('keamanan') || title.contains('security') ||
+                 description.contains('keamanan') || description.contains('security');
+        case 'Troubleshooting':
+          return title.contains('troubleshoot') || title.contains('problem') ||
+                 description.contains('troubleshoot') || description.contains('problem');
+        case 'Hardware':
+          return title.contains('hardware') || title.contains('perangkat') ||
+                 description.contains('hardware') || description.contains('perangkat');
+        default:
+          return true;
+      }
+    }).toList();
+  }
+
+  // Get category from video title for display
+  String _getCategoryFromTitle(String title) {
+    final titleLower = title.toLowerCase();
+    
+    if (titleLower.contains('dasar') || titleLower.contains('basic')) {
+      return 'Dasar';
+    } else if (titleLower.contains('protokol') || titleLower.contains('protocol')) {
+      return 'Protokol';
+    } else if (titleLower.contains('keamanan') || titleLower.contains('security')) {
+      return 'Keamanan';
+    } else if (titleLower.contains('troubleshoot') || titleLower.contains('problem')) {
+      return 'Troubleshoot';
+    } else if (titleLower.contains('hardware') || titleLower.contains('perangkat')) {
+      return 'Hardware';
+    } else {
+      return 'Video';
+    }
+  }
+
   void _showSearchDialog() {
+    final TextEditingController searchController = TextEditingController();
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Pencarian Video'),
-        content: const TextField(
-          decoration: InputDecoration(
+        content: TextField(
+          controller: searchController,
+          decoration: const InputDecoration(
             hintText: 'Masukkan kata kunci...',
             prefixIcon: Icon(Icons.search),
           ),
+          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -502,8 +672,11 @@ class _VideoListScreenState extends State<VideoListScreen>
           ),
           TextButton(
             onPressed: () {
+              final query = searchController.text.trim();
+              if (query.isNotEmpty) {
+                context.read<VideoProvider>().searchVideos(query);
+              }
               Navigator.pop(context);
-              // Implement search functionality
             },
             child: const Text('Cari'),
           ),
