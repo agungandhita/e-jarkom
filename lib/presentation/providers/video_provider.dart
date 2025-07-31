@@ -74,22 +74,22 @@ class VideoProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      final result = await _videoRepository.getVideos(
-        page: _currentPage,
-        limit: _pageSize,
-        search: search,
-        sortBy: _sortBy.value,
-        sortOrder: _sortOrder.value,
-      );
+        final result = await _videoRepository.getVideosPaginated(
+          page: _currentPage,
+          limit: _pageSize,
+          search: search,
+          sortBy: _sortBy.value,
+          sortOrder: _sortOrder.value,
+        );
 
-      if (refresh) {
-        _videos = result;
-      } else {
-        _videos.addAll(result);
-      }
+        if (refresh) {
+          _videos = result.videos;
+        } else {
+          _videos.addAll(result.videos);
+        }
 
-      _hasMoreData = result.length == _pageSize;
-      _currentPage++;
+        _hasMoreData = result.currentPage < result.lastPage;
+        _currentPage++;
 
       _applyFilters();
     } catch (e) {
@@ -107,17 +107,17 @@ class VideoProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = await _videoRepository.getVideos(
-        page: _currentPage,
-        limit: _pageSize,
-        search: _searchQuery.isNotEmpty ? _searchQuery : null,
-        sortBy: _sortBy.value,
-        sortOrder: _sortOrder.value,
-      );
+      final result = await _videoRepository.getVideosPaginated(
+          page: _currentPage,
+          limit: _pageSize,
+          search: _searchQuery.isNotEmpty ? _searchQuery : null,
+          sortBy: _sortBy.value,
+          sortOrder: _sortOrder.value,
+        );
 
-      _videos.addAll(result);
-      _hasMoreData = result.length == _pageSize;
-      _currentPage++;
+        _videos.addAll(result.videos);
+        _hasMoreData = result.currentPage < result.lastPage;
+        _currentPage++;
 
       _applyFilters();
     } catch (e) {

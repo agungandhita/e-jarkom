@@ -43,12 +43,14 @@ class AuthProvider with ChangeNotifier {
   // Check authentication status on app start
   Future<void> _checkAuthStatus() async {
     final token = _storageService.getAuthToken();
-    print('DEBUG AuthProvider: Token from storage: ${token != null ? "[TOKEN_EXISTS]" : "null"}');
-    
+    print(
+      'DEBUG AuthProvider: Token from storage: ${token != null ? "[TOKEN_EXISTS]" : "null"}',
+    );
+
     if (token != null) {
       _apiService.setToken(token);
       print('DEBUG AuthProvider: Token set in ApiService');
-      
+
       final userData = _storageService.getUserData();
       if (userData != null) {
         _currentUser = User.fromJson(userData);
@@ -59,7 +61,9 @@ class AuthProvider with ChangeNotifier {
         // Refresh user data from server
         await refreshUser();
       } else {
-        print('DEBUG AuthProvider: No user data found, setting unauthenticated');
+        print(
+          'DEBUG AuthProvider: No user data found, setting unauthenticated',
+        );
         _state = AuthState.unauthenticated;
         notifyListeners();
       }

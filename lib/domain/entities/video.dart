@@ -3,6 +3,8 @@ class Video {
   final String judul;
   final String deskripsi;
   final String youtubeUrl;
+  final String? youtubeId;
+  final String? thumbnail;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -11,6 +13,8 @@ class Video {
     required this.judul,
     required this.deskripsi,
     required this.youtubeUrl,
+    this.youtubeId,
+    this.thumbnail,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -22,6 +26,8 @@ class Video {
       judul: json['judul']?.toString() ?? '',
       deskripsi: json['deskripsi']?.toString() ?? '',
       youtubeUrl: json['youtube_url']?.toString() ?? '',
+      youtubeId: json['youtube_id']?.toString() ?? '',
+      thumbnail: json['thumbnail']?.toString() ?? '',
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'].toString())
           : DateTime.now(),
@@ -38,6 +44,8 @@ class Video {
       'judul': judul,
       'deskripsi': deskripsi,
       'youtube_url': youtubeUrl,
+      'youtube_id': youtubeId,
+      'thumbnail': thumbnail,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -49,6 +57,8 @@ class Video {
     String? judul,
     String? deskripsi,
     String? youtubeUrl,
+    String? youtubeId,
+    String? thumbnail,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -57,6 +67,8 @@ class Video {
       judul: judul ?? this.judul,
       deskripsi: deskripsi ?? this.deskripsi,
       youtubeUrl: youtubeUrl ?? this.youtubeUrl,
+      youtubeId: youtubeId ?? this.youtubeId,
+      thumbnail: thumbnail ?? this.thumbnail,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -64,6 +76,12 @@ class Video {
 
   // Extract YouTube video ID from URL
   String? get youtubeVideoId {
+    // Use youtubeId from backend if available
+    if (youtubeId != null && youtubeId!.isNotEmpty) {
+      return youtubeId;
+    }
+    
+    // Fallback to extracting from URL
     if (youtubeUrl.isEmpty) return null;
 
     final RegExp regExp = RegExp(
@@ -77,6 +95,12 @@ class Video {
 
   // Get YouTube thumbnail URL
   String? get youtubeThumbnailUrl {
+    // Use thumbnail from backend if available
+    if (thumbnail != null && thumbnail!.isNotEmpty) {
+      return thumbnail;
+    }
+    
+    // Fallback to generating from video ID
     final videoId = youtubeVideoId;
     if (videoId != null) {
       return 'https://img.youtube.com/vi/$videoId/maxresdefault.jpg';

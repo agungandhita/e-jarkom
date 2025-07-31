@@ -46,14 +46,20 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
 
     _animationController.forward();
 
-    // Load quiz questions
+    // Start quiz session
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final quizProvider = context.read<QuizProvider>();
-      quizProvider.loadQuizQuestions(level: widget.level);
-      
-      // Initialize currentQuestionIndex from QuizProvider
-      currentQuestionIndex = quizProvider.currentQuestionIndex;
+      context.read<QuizProvider>().startQuizSession(level: widget.level);
     });
+  }
+
+  void _syncSelectedAnswers(QuizProvider quizProvider) {
+    // Sync selectedAnswers with userAnswers from provider
+    final userAnswers = quizProvider.userAnswers;
+    for (int i = 0; i < userAnswers.length; i++) {
+      if (userAnswers[i] != null && userAnswers[i]! < 4) {
+        selectedAnswers[i] = ['a', 'b', 'c', 'd'][userAnswers[i]!];
+      }
+    }
   }
 
   @override
@@ -63,29 +69,17 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   }
 
   void _submitQuiz(QuizProvider quizProvider) async {
-    // Prepare answers for submission
-    final answers = <Map<String, dynamic>>[];
-    final questions = quizProvider.questions;
+    // Use QuizService to format answers properly (includes all questions)
+    // The QuizProvider.submitQuiz method already handles formatting internally
+    // so we just need to call it without manually formatting answers
     
-    for (int i = 0; i < questions.length; i++) {
-      final selectedAnswer = selectedAnswers[i];
-      if (selectedAnswer != null) {
-        answers.add({
-          'quiz_id': questions[i].id,
-          'jawaban': selectedAnswer,
-        });
-      }
-    }
+    // Submit quiz - QuizProvider will handle formatting all answers internally
+    await quizProvider.submitQuiz([]);
 
-    // Submit quiz
-    await quizProvider.submitQuiz(answers);
-    
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => const QuizResultScreen(),
-        ),
+        MaterialPageRoute(builder: (context) => const QuizResultScreen()),
       );
     }
   }
@@ -95,7 +89,9 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Keluar Quiz'),
-        content: const Text('Apakah Anda yakin ingin keluar? Progress akan hilang.'),
+        content: const Text(
+          'Apakah Anda yakin ingin keluar? Progress akan hilang.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -116,9 +112,14 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Consumer<QuizProvider>(
       builder: (context, quizProvider, child) {
+        // Sync selected answers with provider state
+        if (quizProvider.questions.isNotEmpty) {
+          _syncSelectedAnswers(quizProvider);
+        }
+        
         if (quizProvider.isLoading) {
           return Scaffold(
             appBar: AppBar(
@@ -143,7 +144,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                 children: [
                   Text('Error: ${quizProvider.errorMessage}'),
                   ElevatedButton(
-                    onPressed: () => quizProvider.loadQuizQuestions(level: widget.level),
+                    onPressed: () =>
+                        quizProvider.startQuizSession(level: widget.level),
                     child: const Text('Coba Lagi'),
                   ),
                 ],
@@ -153,16 +155,6 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
         }
 
         final questions = quizProvider.questions;
-        
-        // Sync currentQuestionIndex with QuizProvider
-        if (currentQuestionIndex != quizProvider.currentQuestionIndex) {
-          currentQuestionIndex = quizProvider.currentQuestionIndex;
-        }
-        
-        // Update isAnswered based on QuizProvider data
-        isAnswered = quizProvider.userAnswers.length > currentQuestionIndex && 
-                    quizProvider.userAnswers[currentQuestionIndex] != null;
-        
         if (questions.isEmpty) {
           return Scaffold(
             appBar: AppBar(
@@ -213,7 +205,9 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                             Text(
                               '${currentQuestionIndex + 1}/${questions.length}',
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                color: theme.colorScheme.onSurface.withOpacity(
+                                  0.7,
+                                ),
                               ),
                             ),
                           ],
@@ -221,7 +215,8 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
                           value: (currentQuestionIndex + 1) / questions.length,
-                          backgroundColor: theme.colorScheme.outline.withOpacity(0.2),
+                          backgroundColor: theme.colorScheme.outline
+                              .withOpacity(0.2),
                           valueColor: AlwaysStoppedAnimation<Color>(
                             theme.colorScheme.primary,
                           ),
@@ -240,10 +235,14 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                           // Question Text
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.all(AppConstants.spacingL),
+                            padding: const EdgeInsets.all(
+                              AppConstants.spacingL,
+                            ),
                             decoration: BoxDecoration(
                               color: theme.cardColor,
-                              borderRadius: BorderRadius.circular(AppConstants.borderRadiusL),
+                              borderRadius: BorderRadius.circular(
+                                AppConstants.borderRadiusL,
+                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.05),
@@ -266,58 +265,52 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                           ...currentQuestion.pilihan.entries.map((entry) {
                             final optionKey = entry.key;
                             final optionText = entry.value;
-                            
-                            // Check if this option is selected based on QuizProvider data
-                            bool isSelected = false;
-                            if (quizProvider.userAnswers.length > currentQuestionIndex && 
-                                quizProvider.userAnswers[currentQuestionIndex] != null) {
-                              final answerIndex = quizProvider.userAnswers[currentQuestionIndex]!;
-                              final expectedKey = ['a', 'b', 'c', 'd'][answerIndex];
-                              isSelected = optionKey == expectedKey;
-                            }
-                            
+                            final isSelected =
+                                selectedAnswers[currentQuestionIndex] ==
+                                optionKey;
+
                             return Container(
-                              margin: const EdgeInsets.only(bottom: AppConstants.spacingM),
+                              margin: const EdgeInsets.only(
+                                bottom: AppConstants.spacingM,
+                              ),
                               child: InkWell(
                                 onTap: () {
-                                  setState(() {
-                                    selectedAnswers[currentQuestionIndex] = optionKey;
-                                    isAnswered = true;
-                                    
-                                    // Convert option key to index and save to QuizProvider
-                                    int answerIndex = 0;
-                                    switch (optionKey) {
-                                      case 'a':
-                                        answerIndex = 0;
-                                        break;
-                                      case 'b':
-                                        answerIndex = 1;
-                                        break;
-                                      case 'c':
-                                        answerIndex = 2;
-                                        break;
-                                      case 'd':
-                                        answerIndex = 3;
-                                        break;
-                                    }
-                                    quizProvider.answerQuestion(answerIndex);
-                                  });
-                                },
-                                borderRadius: BorderRadius.circular(AppConstants.borderRadiusM),
+                              setState(() {
+                                selectedAnswers[currentQuestionIndex] =
+                                    optionKey;
+                                isAnswered = true;
+                              });
+                              
+                              // Update quiz provider with the answer
+                              final optionIndex = ['a', 'b', 'c', 'd'].indexOf(optionKey.toLowerCase());
+                              if (optionIndex != -1) {
+                                quizProvider.answerQuestion(optionIndex);
+                              }
+                            },
+                                borderRadius: BorderRadius.circular(
+                                  AppConstants.borderRadiusM,
+                                ),
                                 child: Container(
                                   width: double.infinity,
-                                  padding: const EdgeInsets.all(AppConstants.spacingL),
+                                  padding: const EdgeInsets.all(
+                                    AppConstants.spacingL,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isSelected 
-                                        ? theme.colorScheme.primary.withOpacity(0.1)
+                                    color: isSelected
+                                        ? theme.colorScheme.primary.withOpacity(
+                                            0.1,
+                                          )
                                         : theme.cardColor,
                                     border: Border.all(
-                                      color: isSelected 
+                                      color: isSelected
                                           ? theme.colorScheme.primary
-                                          : theme.colorScheme.outline.withOpacity(0.3),
+                                          : theme.colorScheme.outline
+                                                .withOpacity(0.3),
                                       width: isSelected ? 2 : 1,
                                     ),
-                                    borderRadius: BorderRadius.circular(AppConstants.borderRadiusM),
+                                    borderRadius: BorderRadius.circular(
+                                      AppConstants.borderRadiusM,
+                                    ),
                                   ),
                                   child: Row(
                                     children: [
@@ -326,17 +319,17 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                         height: 24,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: isSelected 
+                                          color: isSelected
                                               ? theme.colorScheme.primary
                                               : Colors.transparent,
                                           border: Border.all(
-                                            color: isSelected 
+                                            color: isSelected
                                                 ? theme.colorScheme.primary
                                                 : theme.colorScheme.outline,
                                             width: 2,
                                           ),
                                         ),
-                                        child: isSelected 
+                                        child: isSelected
                                             ? const Icon(
                                                 Icons.check,
                                                 color: Colors.white,
@@ -348,11 +341,12 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                                       Expanded(
                                         child: Text(
                                           '$optionKey. $optionText',
-                                          style: theme.textTheme.bodyLarge?.copyWith(
-                                            fontWeight: isSelected 
-                                                ? FontWeight.w600
-                                                : FontWeight.normal,
-                                          ),
+                                          style: theme.textTheme.bodyLarge
+                                              ?.copyWith(
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w600
+                                                    : FontWeight.normal,
+                                              ),
                                         ),
                                       ),
                                     ],
@@ -377,30 +371,35 @@ class _QuizScreenState extends State<QuizScreen> with TickerProviderStateMixin {
                               onPressed: () {
                                 setState(() {
                                   currentQuestionIndex--;
-                                  // isAnswered will be updated in the build method
+                                  isAnswered = selectedAnswers.containsKey(
+                                    currentQuestionIndex,
+                                  );
                                 });
-                                quizProvider.goToQuestion(currentQuestionIndex);
                               },
                               child: const Text('Sebelumnya'),
                             ),
                           ),
-                        if (currentQuestionIndex > 0) SizedBox(width: AppConstants.spacingM),
+                        if (currentQuestionIndex > 0)
+                          SizedBox(width: AppConstants.spacingM),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: isAnswered ? () {
-                              if (currentQuestionIndex < questions.length - 1) {
-                                setState(() {
-                                  currentQuestionIndex++;
-                                  // isAnswered will be updated in the build method
-                                });
-                                quizProvider.goToQuestion(currentQuestionIndex);
-                              } else {
-                                _submitQuiz(quizProvider);
-                              }
-                            } : null,
+                            onPressed: isAnswered
+                                ? () {
+                                    if (currentQuestionIndex <
+                                        questions.length - 1) {
+                                      setState(() {
+                                        currentQuestionIndex++;
+                                        isAnswered = selectedAnswers
+                                            .containsKey(currentQuestionIndex);
+                                      });
+                                    } else {
+                                      _submitQuiz(quizProvider);
+                                    }
+                                  }
+                                : null,
                             child: Text(
-                              currentQuestionIndex < questions.length - 1 
-                                  ? 'Selanjutnya' 
+                              currentQuestionIndex < questions.length - 1
+                                  ? 'Selanjutnya'
                                   : 'Selesai',
                             ),
                           ),

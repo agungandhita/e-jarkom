@@ -63,7 +63,9 @@ class ApiService {
           // Add auth token if available
           if (_token != null) {
             options.headers['Authorization'] = 'Bearer $_token';
-            print('DEBUG ApiService: Authorization header added for ${options.uri}');
+            print(
+              'DEBUG ApiService: Authorization header added for ${options.uri}',
+            );
           } else {
             print('DEBUG ApiService: No token available for ${options.uri}');
           }
@@ -96,7 +98,9 @@ class ApiService {
 
   void setToken(String token) {
     _token = token;
-    print('DEBUG ApiService: Token set - ${token != null ? "[TOKEN_SET]" : "null"}');
+    print(
+      'DEBUG ApiService: Token set - ${token != null ? "[TOKEN_SET]" : "null"}',
+    );
   }
 
   void _clearToken() {
@@ -123,10 +127,7 @@ class ApiService {
           return {
             'success': true,
             'message': data['message'] ?? 'Login successful',
-            'data': {
-              'token': token,
-              'user': user,
-            },
+            'data': {'token': token, 'user': user},
           };
         }
       }
@@ -342,9 +343,10 @@ class ApiService {
   // Add tool to favorites
   Future<Map<String, dynamic>> addToFavorites(int toolId) async {
     try {
-      final response = await _dio.post('/tools/favorites', data: {
-        'tool_id': toolId,
-      });
+      final response = await _dio.post(
+        '/tools/favorites',
+        data: {'tool_id': toolId},
+      );
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -374,9 +376,10 @@ class ApiService {
   // Rate a tool
   Future<Map<String, dynamic>> rateTool(int toolId, double rating) async {
     try {
-      final response = await _dio.post('/tools/$toolId/rate', data: {
-        'rating': rating,
-      });
+      final response = await _dio.post(
+        '/tools/$toolId/rate',
+        data: {'rating': rating},
+      );
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -416,13 +419,11 @@ class ApiService {
     int page = 1,
     int limit = 10,
     String? search,
-    String? category,
   }) async {
     try {
-      final queryParams = <String, dynamic>{'page': page, 'limit': limit};
+      final queryParams = <String, dynamic>{'per_page': limit};
 
-      if (search != null) queryParams['search'] = search;
-      if (category != null) queryParams['category'] = category;
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
 
       final response = await _dio.get('/videos', queryParameters: queryParams);
       return response.data;
@@ -464,15 +465,15 @@ class ApiService {
 
       print('Making API request to: /quizzes/$level');
       print('Query parameters: $queryParams');
-      
+
       final response = await _dio.get(
         '/quizzes/$level',
         queryParameters: queryParams,
       );
-      
+
       print('API Response Status: ${response.statusCode}');
       print('API Response Data: ${response.data}');
-      
+
       return response.data;
     } on DioException catch (e) {
       print('DioException in getQuizzes: ${e.message}');
@@ -488,9 +489,20 @@ class ApiService {
     Map<String, dynamic> answers,
   ) async {
     try {
-      final response = await _dio.post('/quizzes/$level/submit', data: answers);
+      print('DEBUG API: Submitting quiz answers to /quizzes/submit');
+      print('DEBUG API: Request data: $answers');
+      print('DEBUG API: Level: $level');
+
+      final response = await _dio.post('/quizzes/submit', data: answers);
+
+      print('DEBUG API: Submit response status: ${response.statusCode}');
+      print('DEBUG API: Submit response data: ${response.data}');
+
       return response.data;
     } on DioException catch (e) {
+      print('DEBUG API: Submit quiz error: ${e.message}');
+      print('DEBUG API: Submit quiz error response: ${e.response?.data}');
+      print('DEBUG API: Submit quiz error status: ${e.response?.statusCode}');
       throw _handleError(e);
     }
   }
@@ -668,10 +680,13 @@ class ApiService {
   // Get tools by category
   Future<Map<String, dynamic>> getToolsByCategory(int categoryId) async {
     try {
-      final response = await _dio.get('/tools', queryParameters: {
-        'category_id': categoryId,
-        'per_page': 50, // Get more items for category view
-      });
+      final response = await _dio.get(
+        '/tools',
+        queryParameters: {
+          'category_id': categoryId,
+          'per_page': 50, // Get more items for category view
+        },
+      );
       return response.data;
     } on DioException catch (e) {
       throw _handleError(e);
@@ -736,7 +751,7 @@ class ApiService {
     try {
       Map<String, dynamic> queryParams = {'limit': limit};
       if (level != null) queryParams['level'] = level;
-      
+
       final response = await _dio.get(
         '/scores/leaderboard',
         queryParameters: queryParams,

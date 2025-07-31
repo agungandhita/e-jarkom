@@ -23,8 +23,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   void initState() {
     super.initState();
 
-    // Extract video ID from YouTube URL
-    videoId = YoutubePlayer.convertUrlToId(widget.video.youtubeUrl);
+    // Use video ID from domain entity (backend provides it) or extract from URL as fallback
+    videoId = widget.video.youtubeVideoId ?? YoutubePlayer.convertUrlToId(widget.video.youtubeUrl);
 
     if (videoId != null) {
       _youtubeController = YoutubePlayerController(

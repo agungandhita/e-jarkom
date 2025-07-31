@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../presentation/providers/quiz_provider.dart';
 import 'quiz_level_screen.dart';
+import '../main_screen.dart';
 
 class QuizResultScreen extends StatefulWidget {
   const QuizResultScreen({Key? key}) : super(key: key);
@@ -39,8 +40,11 @@ class _QuizResultScreenState extends State<QuizResultScreen>
 
     _slideAnimation =
         Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
-    );
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _scoreAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
@@ -87,11 +91,11 @@ class _QuizResultScreenState extends State<QuizResultScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Consumer<QuizProvider>(
       builder: (context, quizProvider, child) {
         final results = quizProvider.getQuizResults();
-        
+
         if (results.isEmpty) {
           return Scaffold(
             appBar: AppBar(
@@ -99,15 +103,13 @@ class _QuizResultScreenState extends State<QuizResultScreen>
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: Colors.white,
             ),
-            body: const Center(
-              child: Text('Tidak ada hasil quiz tersedia'),
-            ),
+            body: const Center(child: Text('Tidak ada hasil quiz tersedia')),
           );
         }
 
-        final percentage = results['percentage'] ?? 0;
-        final gradeText = _getGradeText(percentage.toDouble());
-        final gradeColor = _getGradeColor(percentage.toDouble(), theme);
+        final percentage = (results['percentage'] ?? 0).toDouble();
+        final gradeText = _getGradeText(percentage);
+        final gradeColor = _getGradeColor(percentage, theme);
         final gradeIcon = _getGradeIcon(percentage);
 
         return Scaffold(
@@ -140,7 +142,9 @@ class _QuizResultScreenState extends State<QuizResultScreen>
                             gradeColor.withOpacity(0.05),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(AppConstants.borderRadiusXL),
+                        borderRadius: BorderRadius.circular(
+                          AppConstants.borderRadiusXL,
+                        ),
                         border: Border.all(
                           color: gradeColor.withOpacity(0.3),
                           width: 2,
@@ -205,7 +209,9 @@ class _QuizResultScreenState extends State<QuizResultScreen>
                           Text(
                             'Skor Anda',
                             style: theme.textTheme.bodyLarge?.copyWith(
-                              color: theme.colorScheme.onSurface.withOpacity(0.7),
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.7,
+                              ),
                             ),
                           ),
                         ],
@@ -310,8 +316,13 @@ class _QuizResultScreenState extends State<QuizResultScreen>
                           width: double.infinity,
                           child: OutlinedButton(
                             onPressed: () {
-                              Navigator.pop(context);
-                              Navigator.pop(context);
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const MainScreen(),
+                                ),
+                                (route) => false,
+                              );
                             },
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
@@ -373,11 +384,7 @@ class _QuizResultScreenState extends State<QuizResultScreen>
               color: color.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 20,
-            ),
+            child: Icon(icon, color: color, size: 20),
           ),
           SizedBox(height: AppConstants.spacingS),
           Text(

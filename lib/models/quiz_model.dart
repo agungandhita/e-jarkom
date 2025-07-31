@@ -36,13 +36,20 @@ class Quiz {
       };
     }
 
+    // Normalize jawaban benar - ensure it's lowercase and trimmed
+    final rawJawabanBenar =
+        json['jawaban_benar']?.toString() ?? json['jawaban']?.toString() ?? '';
+    final normalizedJawabanBenar = rawJawabanBenar.toLowerCase().trim();
+
     return Quiz(
       id: json['id']?.toString() ?? '',
       soal: json['soal']?.toString() ?? '',
       pilihan: pilihanMap,
-      jawabanBenar: json['jawaban_benar']?.toString() ?? json['jawaban']?.toString() ?? '',
+      jawabanBenar: normalizedJawabanBenar,
       level: json['level']?.toString() ?? '',
-      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 
@@ -107,6 +114,4 @@ class Quiz {
 
   @override
   int get hashCode => id.hashCode;
-
-
 }

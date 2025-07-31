@@ -311,16 +311,53 @@ class _VideoListScreenState extends State<VideoListScreen>
                       topLeft: Radius.circular(AppConstants.borderRadiusL),
                       topRight: Radius.circular(AppConstants.borderRadiusL),
                     ),
-                    child: Container(
-                      color: theme.colorScheme.primary.withOpacity(0.1),
-                      child: Center(
-                        child: Icon(
-                          Icons.play_circle_filled,
-                          size: 64,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ),
+                    child: video.youtubeThumbnailUrl != null
+                        ? Stack(
+                            children: [
+                              Image.network(
+                                video.youtubeThumbnailUrl!,
+                                width: double.infinity,
+                                height: 200,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: theme.colorScheme.primary.withOpacity(0.1),
+                                    child: Center(
+                                      child: Icon(
+                                        Icons.play_circle_filled,
+                                        size: 64,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              Center(
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.6),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.play_arrow,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Container(
+                            color: theme.colorScheme.primary.withOpacity(0.1),
+                            child: Center(
+                              child: Icon(
+                                Icons.play_circle_filled,
+                                size: 64,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ),
                   ),
                 ),
 

@@ -132,7 +132,7 @@ class QuizProvider extends ChangeNotifier {
     int limit = 10,
   }) async {
     print('DEBUG: Loading quiz questions for level: $level');
-    
+
     if (_isLoading) {
       print('DEBUG: Already loading, skipping...');
       return false;
@@ -150,16 +150,18 @@ class QuizProvider extends ChangeNotifier {
       if (token != null) {
         print('DEBUG: Token length: ${token.length}');
       }
-      
+
       print('DEBUG: Calling _quizService.getQuizzesByLevel($level)');
       _questions = await _quizService.getQuizzesByLevel(level, limit: limit);
       print('DEBUG: Received ${_questions.length} quizzes from service');
-      
+
       _selectedLevel = level;
       _selectedCategoryId = categoryId;
       _state = QuizState.ready;
-      
-      print('DEBUG: Quiz state set to ready with ${_questions.length} questions');
+
+      print(
+        'DEBUG: Quiz state set to ready with ${_questions.length} questions',
+      );
 
       // Cache questions
       await _storageService.setString(
@@ -178,22 +180,30 @@ class QuizProvider extends ChangeNotifier {
       print('DEBUG: Attempting to load from cache...');
       try {
         final cachedData = _storageService.getString('quizzes_$level');
-        print('DEBUG: Cached data retrieved: ${cachedData != null ? 'found' : 'not found'}');
-        
+        print(
+          'DEBUG: Cached data retrieved: ${cachedData != null ? 'found' : 'not found'}',
+        );
+
         if (cachedData != null) {
           print('DEBUG: Processing cached data...');
           final List<dynamic> cachedQuestions = jsonDecode(cachedData);
-          print('DEBUG: Decoded ${cachedQuestions.length} questions from cache');
-          
-          _questions = cachedQuestions.map((json) => Quiz.fromJson(json)).toList();
+          print(
+            'DEBUG: Decoded ${cachedQuestions.length} questions from cache',
+          );
+
+          _questions = cachedQuestions
+              .map((json) => Quiz.fromJson(json))
+              .toList();
           print('DEBUG: Converted to ${_questions.length} Quiz objects');
-          
+
           _selectedLevel = level;
           _selectedCategoryId = categoryId;
           _state = QuizState.ready;
           _clearError();
-          
-          print('DEBUG: Successfully loaded ${_questions.length} questions from cache');
+
+          print(
+            'DEBUG: Successfully loaded ${_questions.length} questions from cache',
+          );
           return true;
         } else {
           print('DEBUG: No cached data available');
@@ -205,7 +215,9 @@ class QuizProvider extends ChangeNotifier {
       return false;
     } finally {
       _setLoading(false);
-      print('DEBUG: loadQuizQuestions completed. Final state: ${_state.toString()}, Questions: ${_questions.length}');
+      print(
+        'DEBUG: loadQuizQuestions completed. Final state: ${_state.toString()}, Questions: ${_questions.length}',
+      );
     }
   }
 
@@ -215,11 +227,10 @@ class QuizProvider extends ChangeNotifier {
     String? categoryId,
     int? timeLimit,
   }) async {
-    _setLoading(true);
     _clearError();
 
     try {
-      // Load questions first
+      // Load questions first (don't set loading here to avoid conflict)
       final questionsLoaded = await loadQuizQuestions(
         level: level,
         categoryId: categoryId,
@@ -254,15 +265,14 @@ class QuizProvider extends ChangeNotifier {
       _setError('Gagal memulai kuis: ${e.toString()}');
       _state = QuizState.error;
       return false;
-    } finally {
-      _setLoading(false);
     }
   }
 
   // Answer current question
   void answerQuestion(int answerIndex) {
     if (_currentQuestionIndex >= 0 &&
-        _currentQuestionIndex < _userAnswers.length) {
+        _currentQuestionIndex < _userAnswers.length &&
+        answerIndex >= 0 && answerIndex < 4) {
       _userAnswers[_currentQuestionIndex] = answerIndex;
 
       // Save progress
@@ -332,21 +342,29 @@ class QuizProvider extends ChangeNotifier {
       final responseData = response['data'];
       print('DEBUG: Response data: $responseData');
       print('DEBUG: Score data from calculation: $scoreData');
+
+      // Use backend response if available and valid, otherwise fallback to local calculation
+      final useBackendData = responseData != null && 
+                            responseData['score_percentage'] != null &&
+                            responseData['correct_answers'] != null;
       
-      // Create score model from backend response
       _lastQuizScore = ScoreModel(
-        id: responseData['score_id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        id:
+            responseData?['score_id']?.toString() ??
+            DateTime.now().millisecondsSinceEpoch.toString(),
         userId: 'current_user',
-        level: responseData['level'] ?? _selectedLevel,
-        skor: (responseData['score_percentage'] ?? scoreData['score']).toInt(),
-        totalSoal: responseData['total_questions'] ?? scoreData['total_questions'],
-        benar: responseData['correct_answers'] ?? scoreData['correct_answers'],
-        salah: responseData['incorrect_answers'] ?? scoreData['incorrect_answers'],
+        level: _selectedLevel,
+        skor: useBackendData ? (responseData['score_percentage'] as num).toInt() : scoreData['score'],
+        totalSoal: useBackendData ? responseData['total_questions'] : scoreData['total_questions'],
+        benar: useBackendData ? responseData['correct_answers'] : scoreData['correct_answers'],
+        salah: useBackendData ? responseData['incorrect_answers'] : scoreData['incorrect_answers'],
         tanggal: DateTime.now(),
         createdAt: DateTime.now(),
       );
-      
-      print('DEBUG: Created _lastQuizScore: ${_lastQuizScore?.toMap()}');
+
+      print('DEBUG: Created _lastQuizScore using ${useBackendData ? "BACKEND" : "LOCAL"} data: ${_lastQuizScore?.toMap()}');
+      print('DEBUG: Backend response data was: $responseData');
+      print('DEBUG: Local calculation data was: $scoreData');
 
       _state = QuizState.completed;
 
@@ -358,8 +376,39 @@ class QuizProvider extends ChangeNotifier {
 
       return true;
     } catch (e) {
+      print('DEBUG: Error submitting quiz: $e');
       _setError('Gagal mengirim jawaban: ${e.toString()}');
-      return false;
+      
+      // Fallback: Create score from local calculation if backend fails
+      try {
+        final scoreData = _quizService.calculateScore(
+          questions: _questions,
+          userAnswers: _userAnswers,
+        );
+        
+        _lastQuizScore = ScoreModel(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          userId: 'current_user',
+          level: _selectedLevel,
+          skor: scoreData['score'],
+          totalSoal: scoreData['total_questions'],
+          benar: scoreData['correct_answers'],
+          salah: scoreData['incorrect_answers'],
+          tanggal: DateTime.now(),
+          createdAt: DateTime.now(),
+        );
+        
+        print('DEBUG: Created fallback _lastQuizScore: ${_lastQuizScore?.toMap()}');
+        _state = QuizState.completed;
+        
+        // Clear session
+        await _storageService.remove('current_quiz_session');
+        
+        return true;
+      } catch (fallbackError) {
+        print('DEBUG: Fallback score calculation failed: $fallbackError');
+        return false;
+      }
     } finally {
       _setLoading(false);
     }
@@ -372,7 +421,7 @@ class QuizProvider extends ChangeNotifier {
       questions: _questions,
       userAnswers: _userAnswers,
     );
-    
+
     await submitQuiz(formattedAnswers);
   }
 
@@ -579,7 +628,9 @@ class QuizProvider extends ChangeNotifier {
 
   // Get quiz results
   Map<String, dynamic> getQuizResults() {
-    print('DEBUG: getQuizResults called, _lastQuizScore: ${_lastQuizScore?.toMap()}');
+    print(
+      'DEBUG: getQuizResults called, _lastQuizScore: ${_lastQuizScore?.toMap()}',
+    );
     if (_lastQuizScore == null) {
       print('DEBUG: _lastQuizScore is null, returning empty map');
       return {};
@@ -587,7 +638,9 @@ class QuizProvider extends ChangeNotifier {
 
     final scoreModel = _lastQuizScore!;
     final salah = scoreModel.totalSoal - scoreModel.benar;
-    final percentage = (scoreModel.benar / scoreModel.totalSoal * 100).round();
+    final percentage = scoreModel.totalSoal > 0 
+        ? (scoreModel.benar.toDouble() / scoreModel.totalSoal.toDouble() * 100).round()
+        : 0;
 
     String grade = 'F';
     if (percentage >= 90) {
@@ -724,11 +777,14 @@ class QuizProvider extends ChangeNotifier {
 
   Map<String, dynamic>? get userStatistics {
     if (_userScores.isEmpty) return null;
-    
+
     final totalQuizzes = _userScores.length;
-    final totalScore = _userScores.fold<double>(0, (sum, score) => sum + score.skor);
+    final totalScore = _userScores.fold<double>(
+      0,
+      (sum, score) => sum + score.skor,
+    );
     final averageScore = totalQuizzes > 0 ? totalScore / totalQuizzes : 0.0;
-    
+
     return {
       'totalQuizzes': totalQuizzes,
       'averageScore': averageScore,

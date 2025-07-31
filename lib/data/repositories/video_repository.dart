@@ -4,6 +4,43 @@ import '../../domain/entities/video.dart';
 import '../datasources/local_storage.dart';
 import '../../services/api_service.dart';
 
+// Pagination response class
+class PaginatedVideoResponse {
+  final List<Video> videos;
+  final int currentPage;
+  final int lastPage;
+  final int perPage;
+  final int total;
+  final int? from;
+  final int? to;
+
+  PaginatedVideoResponse({
+    required this.videos,
+    required this.currentPage,
+    required this.lastPage,
+    required this.perPage,
+    required this.total,
+    this.from,
+    this.to,
+  });
+
+  factory PaginatedVideoResponse.fromJson(Map<String, dynamic> json) {
+    final List<dynamic> videosJson = json['data'] ?? [];
+    final videos = videosJson.map((json) => Video.fromJson(json)).toList();
+    final pagination = json['pagination'] ?? {};
+
+    return PaginatedVideoResponse(
+      videos: videos,
+      currentPage: pagination['current_page'] ?? 1,
+      lastPage: pagination['last_page'] ?? 1,
+      perPage: pagination['per_page'] ?? 10,
+      total: pagination['total'] ?? 0,
+      from: pagination['from'],
+      to: pagination['to'],
+    );
+  }
+}
+
 class VideoRepository {
   final Dio _dio;
   final LocalStorage? _localStorage;
@@ -22,9 +59,26 @@ class VideoRepository {
     String? sortBy,
     String? sortOrder,
   }) async {
+    final paginatedResponse = await getVideosPaginated(
+      page: page,
+      limit: limit,
+      search: search,
+      sortBy: sortBy,
+      sortOrder: sortOrder,
+    );
+    return paginatedResponse.videos;
+  }
+
+  // Get videos with full pagination info
+  Future<PaginatedVideoResponse> getVideosPaginated({
+    int page = 1,
+    int limit = 10,
+    String? search,
+    String? sortBy,
+    String? sortOrder,
+  }) async {
     try {
       final queryParams = <String, dynamic>{
-        'page': page,
         'per_page': limit,
       };
 
@@ -41,13 +95,12 @@ class VideoRepository {
       final response = await _dio.get('/videos', queryParameters: queryParams);
 
       if (response.statusCode == 200) {
-        final List<dynamic> videosJson = response.data['data']['data'] ?? [];
-        final videos = videosJson.map((json) => Video.fromJson(json)).toList();
+        final paginatedResponse = PaginatedVideoResponse.fromJson(response.data);
 
         // Cache videos for offline access
-        await _cacheVideos(videos, page);
+        await _cacheVideos(paginatedResponse.videos, page);
 
-        return videos;
+        return paginatedResponse;
       } else {
         throw Exception('Failed to load videos: ${response.statusMessage}');
       }
@@ -56,7 +109,14 @@ class VideoRepository {
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.connectionError) {
         // Try to load from cache when offline
-        return await _getCachedVideos(page);
+        final cachedVideos = await _getCachedVideos(page);
+        return PaginatedVideoResponse(
+          videos: cachedVideos,
+          currentPage: page,
+          lastPage: page,
+          perPage: limit,
+          total: cachedVideos.length,
+        );
       }
       throw _handleDioError(e);
     } catch (e) {

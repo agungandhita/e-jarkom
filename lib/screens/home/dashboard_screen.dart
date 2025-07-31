@@ -1003,7 +1003,44 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Stack(
                   children: [
                     // YouTube Thumbnail
-                    _buildYouTubeThumbnail(video.youtubeUrl ?? ''),
+                    video.youtubeThumbnailUrl != null
+                        ? Image.network(
+                            video.youtubeThumbnailUrl!,
+                            width: double.infinity,
+                            height: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: double.infinity,
+                                height: double.infinity,
+                                color: Colors.grey[300],
+                                child: const Icon(
+                                  Icons.play_circle_outline,
+                                  size: 50,
+                                  color: Colors.grey,
+                                ),
+                              );
+                            },
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                width: double.infinity,
+                                height: double.infinity,
+                                color: Colors.grey[300],
+                                child: const Center(child: CircularProgressIndicator()),
+                              );
+                            },
+                          )
+                        : Container(
+                            width: double.infinity,
+                            height: double.infinity,
+                            color: Colors.grey[300],
+                            child: const Icon(
+                              Icons.play_circle_outline,
+                              size: 50,
+                              color: Colors.grey,
+                            ),
+                          ),
                     // Play Button Overlay
                     Container(
                       color: Colors.black.withOpacity(0.3),
@@ -1146,72 +1183,5 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
-  Widget _buildYouTubeThumbnail(String youtubeUrl) {
-    if (youtubeUrl.isEmpty) {
-      return Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.grey[300],
-        child: const Icon(
-          Icons.play_circle_outline,
-          size: 50,
-          color: Colors.grey,
-        ),
-      );
-    }
 
-    final videoId = _extractYouTubeVideoId(youtubeUrl);
-    if (videoId == null) {
-      return Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.grey[300],
-        child: const Icon(
-          Icons.play_circle_outline,
-          size: 50,
-          color: Colors.grey,
-        ),
-      );
-    }
-
-    final thumbnailUrl =
-        'https://img.youtube.com/vi/$videoId/maxresdefault.jpg';
-
-    return Image.network(
-      thumbnailUrl,
-      width: double.infinity,
-      height: double.infinity,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          width: double.infinity,
-          height: double.infinity,
-          color: Colors.grey[300],
-          child: const Icon(
-            Icons.play_circle_outline,
-            size: 50,
-            color: Colors.grey,
-          ),
-        );
-      },
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return Container(
-          width: double.infinity,
-          height: double.infinity,
-          color: Colors.grey[300],
-          child: const Center(child: CircularProgressIndicator()),
-        );
-      },
-    );
-  }
-
-  String? _extractYouTubeVideoId(String url) {
-    final regExp = RegExp(
-      r'(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})',
-      caseSensitive: false,
-    );
-    final match = regExp.firstMatch(url);
-    return match?.group(1);
-  }
 }

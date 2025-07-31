@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 
 void main() async {
   final dio = Dio();
-  
+
   // Configure Dio with the same settings as the app
   dio.options.baseUrl = 'https://538785daec69.ngrok-free.app/api';
   dio.options.headers = {
@@ -13,13 +13,13 @@ void main() async {
   };
   dio.options.connectTimeout = const Duration(seconds: 30);
   dio.options.receiveTimeout = const Duration(seconds: 30);
-  
+
   try {
     print('Testing quiz API endpoint...');
     print('Making request to: /quizzes/sulit');
-    
+
     final response = await dio.get('/quizzes/sulit');
-    
+
     print('\n=== API Response ===');
     print('Status Code: ${response.statusCode}');
     print('Status Message: ${response.statusMessage}');
@@ -27,7 +27,7 @@ void main() async {
     print('\n=== Response Data ===');
     print('Data Type: ${response.data.runtimeType}');
     print('Raw Data: ${response.data}');
-    
+
     if (response.data is Map<String, dynamic>) {
       final data = response.data as Map<String, dynamic>;
       print('\n=== Parsed Response ===');
@@ -35,7 +35,7 @@ void main() async {
       print('Message: ${data['message']}');
       print('Data: ${data['data']}');
       print('Data Type: ${data['data']?.runtimeType}');
-      
+
       if (data['data'] != null) {
         if (data['data'] is List) {
           final list = data['data'] as List;
@@ -59,7 +59,6 @@ void main() async {
         }
       }
     }
-    
   } catch (e) {
     print('\n=== Error ===');
     print('Error: $e');
